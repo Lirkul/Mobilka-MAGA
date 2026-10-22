@@ -25,7 +25,7 @@ export default function FilterPicker({ field, value, onApply, onClose }) {
           {field.options.map((option) => {
             const selected = Array.isArray(draft) ? draft.includes(option.value) : draft === option.value;
             return (
-              <Pressable key={option.value} accessibilityRole={field.multiple ? 'checkbox' : 'radio'} accessibilityState={{ checked: selected }} accessibilityLabel={option.label} onPress={() => select(option.value)} style={styles.option}>
+              <Pressable key={option.value} accessibilityRole={field.multiple ? 'checkbox' : 'radio'} aria-checked={selected} accessibilityState={{ checked: selected }} accessibilityLabel={option.label} onPress={() => select(option.value)} style={styles.option}>
                 <View style={[styles.indicator, !field.multiple && styles.radio, selected && styles.selected]}>
                   {selected && <Icon name="check" size={14} color={colors.text} />}
                 </View>

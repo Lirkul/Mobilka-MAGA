@@ -1,4 +1,5 @@
-import { FlatList, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { router } from 'expo-router';
 import Text from './AppText';
 import BookCard from './BookCard';
 import Icon from './Icon';
@@ -13,7 +14,7 @@ export default function BookSection({ title, subtitle, books, width, hot = false
       <View style={styles.heading}>
         <Text accessibilityRole="header" style={styles.title}>{title}</Text>
         {hot && <Icon name="flame" size={23} />}
-        <Text style={styles.all}>ВСЕ</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Все книги: ${title}`} onPress={() => router.push({ pathname: '/results', params: { mode: 'discover', filters: JSON.stringify({ sort: hot ? 'newest' : 'popularity' }) } })}><Text style={styles.all}>ВСЕ</Text></Pressable>
       </View>
       <Text style={styles.subtitle}>{subtitle}</Text>
       <FlatList

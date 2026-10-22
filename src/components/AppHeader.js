@@ -3,14 +3,19 @@ import Text from './AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from './Icon';
 import { colors } from '../theme';
+import { useState } from 'react';
+import NavigationMenu from './NavigationMenu';
+import UserMenu from './UserMenu';
 
 export default function AppHeader({ onSearch }) {
+  const [menu, setMenu] = useState(false);
+  const [userMenu, setUserMenu] = useState(false);
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
       <View style={styles.bar}>
-        <View accessibilityLabel="Меню — будет доступно позже" style={styles.icon}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Открыть меню" onPress={() => setMenu(true)} style={styles.icon}>
           <Icon name="menu" />
-        </View>
+        </Pressable>
         <View style={styles.spacer} />
         <Pressable accessibilityRole="button" accessibilityLabel="Открыть поиск и подбор книг" onPress={onSearch} style={({ pressed }) => [styles.icon, pressed && styles.pressed]}>
           <Icon name="search" />
@@ -21,8 +26,10 @@ export default function AppHeader({ onSearch }) {
           <View style={styles.badge}><Text style={styles.badgeText}>999+</Text></View>
         </View>
         <View accessibilityLabel="Обсуждения" style={styles.icon}><Icon name="chat" /></View>
-        <View accessibilityLabel="Профиль" style={styles.icon}><Icon name="avatar" size={32} /></View>
+        <Pressable accessibilityRole="button" accessibilityLabel="Открыть меню пользователя" onPress={() => setUserMenu(true)} style={styles.icon}><Icon name="avatar" size={32} /></Pressable>
       </View>
+      <NavigationMenu visible={menu} onClose={() => setMenu(false)} />
+      <UserMenu visible={userMenu} onClose={() => setUserMenu(false)} />
     </SafeAreaView>
   );
 }

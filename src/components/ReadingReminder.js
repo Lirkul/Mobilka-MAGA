@@ -1,18 +1,19 @@
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { router } from 'expo-router';
 import Text from './AppText';
 import Icon from './Icon';
 import { colors } from '../theme';
 
-export default function ReadingReminder() {
+export default function ReadingReminder({ book }) {
   return (
-    <View style={styles.card}>
+    <Pressable accessibilityRole="button" accessibilityLabel={`Продолжить чтение «${book.title}»`} onPress={() => router.push({ pathname: '/reader/[id]', params: { id: book.id } })} style={styles.card}>
       <View style={styles.icon}><Icon name="book" color="#fff" size={22} /></View>
       <View style={styles.row}>
         <Text style={styles.label}>Вы читали</Text>
-        <Text style={styles.date}>27 июля в 19:05</Text>
+        <Text style={styles.date}>{book.readingProgress.percent}%</Text>
       </View>
-      <Text style={styles.book}>Роман «Против течения: вторая жизнь Ирены»</Text>
-    </View>
+      <Text style={styles.book}>Роман «{book.title}»</Text>
+    </Pressable>
   );
 }
 

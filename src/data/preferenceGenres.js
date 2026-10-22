@@ -1,0 +1,23 @@
+// Broad interests from the reference, separate from exact discovery genres.
+export const preferenceGenres = [
+  { value: 'fantasy', label: 'Фэнтези', icon: 'wand', terms: ['фэнтези'] },
+  { value: 'science-fiction', label: 'Фантастика', icon: 'ufo', terms: ['фантастик', 'киберпанк', 'постапокалипсис'] },
+  { value: 'portal', label: 'Попаданцы', icon: 'rocket', terms: ['попадан'] },
+  { value: 'romance', label: 'Любовные романы', icon: 'hearts', terms: ['любовн', 'романтическ'] },
+  { value: 'fanfiction', label: 'Фанфик', icon: 'unicorn', terms: ['фанфик'] },
+  { value: 'mystery', label: 'Мистика', icon: 'crystal', terms: ['мистик'] },
+  { value: 'modern-prose', label: 'Современная проза', icon: 'city', terms: ['современная проза'] },
+  { value: 'adventure', label: 'Приключения', icon: 'compass', terms: ['приключен'] },
+  { value: 'poetry', label: 'Поэзия', icon: 'feather', terms: ['поэзия'] },
+  { value: 'humor', label: 'Юмор', icon: 'smile', terms: ['юмор'] },
+  { value: 'horror', label: 'Ужасы', icon: 'skull', terms: ['ужас'] },
+  { value: 'thriller', label: 'Триллер', icon: 'knife', terms: ['триллер'] },
+  { value: 'other', label: 'Разное', icon: 'grid', terms: ['разное'] },
+  { value: 'action', label: 'Боевик', icon: 'bomb', terms: ['боевик'] },
+  { value: 'detective', label: 'Детектив', icon: 'search', terms: ['детектив'] },
+  { value: 'young-adult', label: 'Подростковая проза', icon: 'graduation', terms: ['подростков'] },
+  { value: 'litrpg', label: 'ЛитРПГ', icon: 'swords', terms: ['литрпг'] },
+  { value: 'realrpg', label: 'РеалРПГ', icon: 'goggles', terms: ['реалрпг'] },
+  { value: 'history', label: 'Историческая проза', icon: 'castle', terms: ['истори'] },
+  { value: 'drama', label: 'Драма', icon: 'masks', terms: ['драма'] },
+];

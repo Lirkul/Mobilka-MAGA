@@ -8,12 +8,12 @@ import FilterPicker from './FilterPicker';
 import FilterRow from './FilterRow';
 import Icon from './Icon';
 
-export default function SearchPanel({ visible, onClose, onSearchByTitle, onDiscover }) {
+export default function SearchPanel({ visible, onClose, onSearch, onDiscover, initialFilters = null, initialQuery = '', initialPickerKey = null, embedded = false }) {
   const insets = useSafeAreaInsets();
-  const [query, setQuery] = useState('');
-  const [filters, setFilters] = useState(createDefaultFilters);
+  const [query, setQuery] = useState(initialQuery);
+  const [filters, setFilters] = useState(() => initialFilters || createDefaultFilters());
   const [expanded, setExpanded] = useState(false);
-  const [picker, setPicker] = useState(null);
+  const [picker, setPicker] = useState(() => [...filterFields, ...additionalFields].find((field) => field.key === initialPickerKey) || null);
   const [result, setResult] = useState(null);
   const input = useRef(null);
   const scroll = useRef(null);
@@ -30,33 +30,32 @@ export default function SearchPanel({ visible, onClose, onSearchByTitle, onDisco
     else closePanel();
   }
 
-  function submitTitle() {
+  function submitSearch() {
     if (!query.trim()) {
-      setResult({ message: 'Введите название книги.', books: [] });
+      setResult({ message: 'Введите название, имя автора или текст поста.' });
       input.current?.focus();
       return;
     }
     Keyboard.dismiss();
-    const matches = onSearchByTitle(query);
-    setResult({ message: `По названию «${query.trim()}» найдено: ${matches.length}`, books: matches });
+    closePanel();
+    onSearch(query.trim());
   }
 
   function submitFilters() {
     Keyboard.dismiss();
-    const matches = onDiscover(filters);
-    setResult({ message: `По выбранным фильтрам найдено: ${matches.length}`, books: matches });
+    closePanel();
+    onDiscover(filters);
   }
 
   function reset() {
     setQuery('');
-    setFilters({ ...createDefaultFilters(), genres: [] });
+    setFilters(createDefaultFilters());
     setResult(null);
     setExpanded(false);
     scroll.current?.scrollTo({ y: 0, animated: true });
   }
 
-  return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={close} statusBarTranslucent navigationBarTranslucent>
+  const content = (
       <KeyboardAvoidingView style={styles.overlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <Pressable accessibilityRole="button" accessibilityLabel="Закрыть поиск" onPress={closePanel} style={StyleSheet.absoluteFill} />
         <View style={[styles.panel, { paddingBottom: insets.bottom, marginTop: Math.max(insets.top, 16) }]} accessibilityViewIsModal>
@@ -69,22 +68,22 @@ export default function SearchPanel({ visible, onClose, onSearchByTitle, onDisco
                 onChangeText={(text) => { setQuery(text); setResult(null); }}
                 placeholder="Поиск"
                 placeholderTextColor={colors.secondary}
-                accessibilityLabel="Поиск по названию книги"
+                accessibilityLabel="Поиск книг, авторов и постов"
                 returnKeyType="search"
                 autoCorrect={false}
-                onSubmitEditing={submitTitle}
+                onSubmitEditing={submitSearch}
                 selectionColor={colors.accent}
                 underlineColorAndroid="transparent"
                 style={styles.input}
               />
-              <Pressable accessibilityRole="button" accessibilityLabel="Искать по названию" onPress={submitTitle} style={({ pressed }) => [styles.searchButton, pressed && styles.pressed]}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Искать книги, авторов и посты" onPress={submitSearch} style={({ pressed }) => [styles.searchButton, pressed && styles.pressed]}>
                 <Icon name="search" color="#fff" />
               </Pressable>
             </View>
             <View style={styles.divider}><View style={styles.line} /><Text style={styles.or}>или</Text><View style={styles.line} /></View>
             <Text accessibilityRole="header" style={[styles.heading, styles.discoveryHeading]}>Подберите книги по интересам</Text>
             {filterFields.map((field) => <FilterRow key={field.key} label={field.label} value={getFilterLabel(field, filters[field.key])} onPress={() => { Keyboard.dismiss(); setPicker(field); }} />)}
-            <Pressable accessibilityRole="button" accessibilityLabel="Дополнительные фильтры" accessibilityState={{ expanded }} onPress={() => setExpanded(!expanded)} style={styles.additional}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Дополнительные фильтры" aria-expanded={expanded} accessibilityState={{ expanded }} onPress={() => setExpanded(!expanded)} style={styles.additional}>
               <Text style={styles.additionalText}>Дополнительно</Text><Icon name={expanded ? 'down' : 'left'} size={20} />
             </Pressable>
             {expanded && <View style={styles.additionalFields}>
@@ -95,7 +94,6 @@ export default function SearchPanel({ visible, onClose, onSearchByTitle, onDisco
             </Pressable>
             {result && <View accessibilityLiveRegion="polite" style={styles.result}>
               <Text style={styles.resultText}>{result.message}</Text>
-              {result.books.map((book) => <Text style={styles.resultBook} key={book.id}>{book.title}</Text>)}
             </View>}
             <Pressable accessibilityRole="button" onPress={reset} style={styles.reset}><Text style={styles.resetText}>СБРОСИТЬ ВСЁ</Text></Pressable>
           </ScrollView>
@@ -106,8 +104,8 @@ export default function SearchPanel({ visible, onClose, onSearchByTitle, onDisco
           setPicker(null);
         }} />}
       </KeyboardAvoidingView>
-    </Modal>
   );
+  return embedded ? content : <Modal visible={visible} transparent animationType="fade" onRequestClose={close} statusBarTranslucent navigationBarTranslucent>{content}</Modal>;
 }
 
 const styles = StyleSheet.create({
@@ -132,5 +130,4 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.65 },
   result: { borderTopWidth: 1, borderColor: colors.divider, marginTop: 16, paddingTop: 12 },
   resultText: { fontSize: 13, lineHeight: 20, color: colors.text },
-  resultBook: { fontSize: 13, lineHeight: 20, color: colors.secondary, marginTop: 4 },
 });

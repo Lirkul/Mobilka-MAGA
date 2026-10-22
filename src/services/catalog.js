@@ -1,22 +1,32 @@
-import { books } from '../data/books';
+import { series } from '../data/series';
+import { getBookCover } from '../data/imageSources';
+import { getBooks, getHomeFeed, getRecentBooks, searchAll } from './mockApi';
 
-const normalize = (text) => text.trim().toLocaleLowerCase('ru').replaceAll('ё', 'е');
-
-// Separate entry points allow each flow to acquire its own API/route later.
-export function searchBooksByTitle(title) {
-  const query = normalize(title);
-  return query ? books.filter((book) => normalize(book.title).includes(query)) : [];
+// The API model stays independent of the original home-card presentation.
+export function toBookCard(book) {
+  const subscription = series.find((item) => item.id === book.seriesId);
+  return {
+    ...book,
+    author: book.authorNames?.join(', ') || '',
+    cover: getBookCover(book.coverKey),
+    priceLabel: book.access === 'free' ? 'Бесплатно'
+      : book.access === 'series_subscription' ? `Подписка ${subscription?.subscriptionPrice ?? 0} ₽`
+        : `${book.priceRub} ₽`,
+  };
 }
 
-export function discoverBooks(filters) {
-  return books.filter((book) => (
-    (!filters.genres.length || filters.genres.some((genre) => book.genres.includes(genre))) &&
-    !filters.excludedGenres.some((genre) => book.genres.includes(genre)) &&
-    (filters.format === 'any' || book.format === filters.format) &&
-    (filters.status === 'any' || book.status === filters.status) &&
-    (filters.form === 'any' || book.form === filters.form) &&
-    (filters.access === 'any' || book.access === filters.access)
-  )).sort((a, b) => filters.sort === 'title'
-    ? a.title.localeCompare(b.title, 'ru')
-    : b.popularity - a.popularity);
+export async function getHomeContent({ personalized = false } = {}) {
+  const [feed, recent] = await Promise.all([getHomeFeed(), getRecentBooks()]);
+  return {
+    sections: [
+      personalized
+        ? { id: 'recommendations', title: 'Рекомендуемое', subtitle: 'С учётом любимых жанров', books: feed.recommendations.map(toBookCard) }
+        : { id: 'popular', title: 'Популярное', subtitle: 'Самые популярные книги за сегодня', books: feed.popular.map(toBookCard) },
+      { id: 'hot', title: 'Горячие новинки', subtitle: 'Популярные новинки за последние две недели', books: feed.hotNew.map(toBookCard), hot: true },
+    ],
+    lastRead: recent[0] || null,
+  };
 }
+
+export const discoverBooks = getBooks;
+export const searchCatalog = searchAll;

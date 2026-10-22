@@ -1,4 +1,4 @@
-import { Slot } from 'expo-router';
+import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { Roboto_400Regular } from '@expo-google-fonts/roboto/400Regular';
@@ -6,6 +6,10 @@ import { Roboto_500Medium } from '@expo-google-fonts/roboto/500Medium';
 import { Roboto_700Bold } from '@expo-google-fonts/roboto/700Bold';
 import { StyleSheet, View } from 'react-native';
 import { colors } from '../theme';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { configureStorage } from '../services/appState';
+
+configureStorage(AsyncStorage);
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({ Roboto_400Regular, Roboto_500Medium, Roboto_700Bold });
@@ -15,7 +19,7 @@ export default function RootLayout() {
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
-      <Slot />
+      <Stack id="root" screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }} />
     </View>
   );
 }
