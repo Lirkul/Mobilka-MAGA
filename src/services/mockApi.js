@@ -16,6 +16,27 @@ const copy = (value) => JSON.parse(JSON.stringify(value));
 let latencyOverride = null;
 let failedNext = false;
 let nextNetworkOnly = false;
+const pendingReadingProgress = new Map();
+
+function enqueueReadingProgress(bookId, save) {
+  // Register synchronously, before response/storage awaits can let a reader resume.
+  const operation = (pendingReadingProgress.get(bookId) ?? Promise.resolve()).then(save);
+  const settled = operation.then(() => {}, () => {});
+  pendingReadingProgress.set(bookId, settled);
+  settled.then(() => {
+    if (pendingReadingProgress.get(bookId) === settled) pendingReadingProgress.delete(bookId);
+  });
+  return operation;
+}
+
+async function waitForReadingProgress(bookId) {
+  // A later flush may be registered while the previous durable write is pending.
+  while (pendingReadingProgress.has(bookId)) await pendingReadingProgress.get(bookId);
+}
+
+async function waitForAllReadingProgress() {
+  while (pendingReadingProgress.size) await Promise.all(pendingReadingProgress.values());
+}
 
 export class MockApiError extends Error {
   constructor(message = 'Не удалось загрузить данные', status = 503, code = 'server') {
@@ -59,10 +80,14 @@ const enrichAuthor = (author, state) => ({ ...author, subscribed: state.subscrip
 export const mockApiControl = {
   setLatency(ms) { latencyOverride = Math.max(0, Number(ms) || 0); },
   failNextRequest({ networkOnly = false } = {}) { failedNext = true; nextNetworkOnly = networkOnly; },
-  reset() { latencyOverride = null; failedNext = false; nextNetworkOnly = false; return resetAppState(); },
+  reset() {
+    latencyOverride = null; failedNext = false; nextNetworkOnly = false;
+    return waitForAllReadingProgress().then(() => resetAppState());
+  },
 };
 
 export async function getBooks(filters = {}) {
+  await waitForAllReadingProgress();
   return response((state) => {
     // Text search deliberately cannot leak into discovery.
     const appliedFilters = { ...defaultFilters, ...filters, search: '' };
@@ -72,6 +97,7 @@ export async function getBooks(filters = {}) {
 }
 
 export async function searchAll(query) {
+  await waitForAllReadingProgress();
   return response((state) => {
     const q = normalizeText(query);
     if (!q || state.settings.emptyResults) return { query, books: [], authors: [], posts: [] };
@@ -84,8 +110,12 @@ export async function searchAll(query) {
 }
 
 // Book metadata and all bundled teaching chapters are available offline.
-export async function getBookById(id) { return response((state) => enrich(requireBook(id), state), true); }
+export async function getBookById(id) {
+  await waitForReadingProgress(id);
+  return response((state) => enrich(requireBook(id), state), true);
+}
 export async function getAuthorById(id) {
+  await waitForAllReadingProgress();
   return response((state) => ({ ...enrichAuthor(requireAuthor(id), state),
     note: state.authorNotes[id] || '',
     books: visibleBooks(state).filter((book) => book.authorIds.includes(id)).map((book) => enrich(book, state)),
@@ -94,6 +124,7 @@ export async function getAuthorById(id) {
   }));
 }
 export async function getSeriesById(id) {
+  await waitForAllReadingProgress();
   return response((state) => {
     const item = series.find((s) => s.id === id);
     if (!item) throw new MockApiError('Цикл не найден', 404);
@@ -121,6 +152,7 @@ export async function getChapter(bookId, chapterId) {
 export async function getComments(bookId) { return response(() => { requireBook(bookId); return comments.filter((c) => c.bookId === bookId); }, true); }
 
 export async function getLibrary({ includeNotInterested = false } = {}) {
+  await waitForAllReadingProgress();
   return response((state) => Object.entries(state.libraryStatuses)
     .filter(([, status]) => status && (includeNotInterested || status !== 'not_interested'))
     .map(([id]) => books.find((book) => book.id === id)).filter(Boolean).map((book) => enrich(book, state)), true);
@@ -137,13 +169,14 @@ export async function setLibraryStatus(bookId, status) {
   }, true);
 }
 export async function getLibraryPage(options = {}) {
+  await waitForAllReadingProgress();
   return response((state) => {
     const library = books.map((book) => enrich(book, state)).filter((book) => book.libraryStatus || book.userLiked || book.userReaction || book.isPurchased);
     return getLibraryView(library, options);
   }, true);
 }
 export async function saveReadingProgress(bookId, chapterId, percent) {
-  return response(async () => {
+  return enqueueReadingProgress(bookId, () => response(async () => {
     const book = requireBook(bookId);
     const chapter = chapters.find((c) => c.bookId === bookId && c.id === chapterId);
     if (!chapter) throw new MockApiError('Глава не найдена', 404);
@@ -156,18 +189,21 @@ export async function saveReadingProgress(bookId, chapterId, percent) {
       if (!state.libraryStatuses[bookId] || state.libraryStatuses[bookId] === 'planned') state.libraryStatuses[bookId] = 'reading';
     });
     return progress;
-  }, true);
+  }, true));
 }
 export async function getReadingProgress(bookId) {
+  await waitForReadingProgress(bookId);
   return response((state) => { requireBook(bookId); return state.progressByBook[bookId] ?? { bookId, chapterId: null, percent: 0, lastReadAt: null, updatedAt: null }; }, true);
 }
 export async function getRecentBooks() {
+  await waitForAllReadingProgress();
   return response((state) => visibleBooks(state).filter((book) => state.progressByBook[book.id])
     .sort((a, b) => Date.parse(state.progressByBook[b.id].lastReadAt || '') - Date.parse(state.progressByBook[a.id].lastReadAt || ''))
     .map((book) => enrich(book, state)), true);
 }
 export async function getFilterOptions() { return response(() => filterOptions); }
 export async function getHomeFeed() {
+  await waitForAllReadingProgress();
   return response((state) => {
     const available = state.settings.emptyResults ? [] : visibleBooks(state);
     return {

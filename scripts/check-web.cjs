@@ -7,6 +7,9 @@ const output = '.expo/verification';
 const title = 'Город под чёрным солнцем';
 
 async function main() {
+  const { chapters } = await import('../src/data/chapters.js');
+  const firstChapter = chapters.find((chapter) => chapter.id === 'book_001_ch_01');
+  const secondChapter = chapters.find((chapter) => chapter.id === 'book_001_ch_02');
   await fs.mkdir(output, { recursive: true });
   const browser = await chromium.launch({ channel: 'chrome', headless: true });
   let page;
@@ -62,10 +65,10 @@ async function main() {
     step('book to reader and next chapter');
     await button('ЧИТАТЬ').click();
     await expect(page).toHaveURL(/\/reader\/book_001/);
-    await expect(visibleText('Глава 1. Тропа')).toBeVisible();
-    await expect(page.getByText('В воздухе пахло дождём и холодным камнем.', { exact: false }).filter({ visible: true })).toBeVisible();
+    await expect(visibleText(firstChapter.title)).toBeVisible();
+    await expect(page.getByText(firstChapter.text.split('\n\n')[0], { exact: false }).filter({ visible: true })).toBeVisible();
     await button('Следующая глава').click();
-    await expect(visibleText('Глава 2. Тайный знак')).toBeVisible();
+    await expect(visibleText(secondChapter.title)).toBeVisible();
     await screenshot('reader-mobile');
     await back();
     await expect(button('ПРОДОЛЖИТЬ ЧТЕНИЕ')).toBeVisible();

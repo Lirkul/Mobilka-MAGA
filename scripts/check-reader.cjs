@@ -3,6 +3,8 @@ const { chromium, expect } = require('@playwright/test');
 const fs = require('node:fs/promises');
 
 async function main() {
+  const { chapters } = await import('../src/data/chapters.js');
+  const chapter = (number) => chapters.find((item) => item.bookId === 'book_001' && item.number === number);
   const baseUrl = process.env.EXPO_WEB_URL || 'http://localhost:8081';
   const browser = await chromium.launch({ channel: 'chrome', headless: true });
   // Each run gets isolated browser storage and initializes the teaching defaults.
@@ -23,9 +25,9 @@ async function main() {
     await page.screenshot({ path: '.expo/verification/book-mobile.png', animations: 'disabled' });
 
     await page.getByRole('button', { name: 'ЧИТАТЬ', exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'Глава 1. Тропа', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: chapter(1).title, exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Следующая глава' }).click();
-    await expect(page.getByRole('heading', { name: 'Глава 2. Тайный знак', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: chapter(2).title, exact: true })).toBeVisible();
     await page.getByTestId('reader-scroll').evaluate((node) => {
       node.scrollTop = Math.round((node.scrollHeight - node.clientHeight) * 0.6);
     });
@@ -36,7 +38,7 @@ async function main() {
     await page.getByRole('button', { name: 'Назад', exact: true }).last().click();
     await expect(page.getByRole('button', { name: 'ПРОДОЛЖИТЬ ЧТЕНИЕ' })).toBeVisible();
     await page.getByRole('button', { name: 'ПРОДОЛЖИТЬ ЧТЕНИЕ' }).click();
-    await expect(page.getByRole('heading', { name: 'Глава 2. Тайный знак', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: chapter(2).title, exact: true })).toBeVisible();
     await expect(page.getByText('60% главы', { exact: true })).toBeVisible();
     await expect.poll(() => page.getByTestId('reader-scroll').evaluate((node) => (
       Math.round(node.scrollTop / (node.scrollHeight - node.clientHeight) * 100)
@@ -44,8 +46,8 @@ async function main() {
     await page.screenshot({ path: '.expo/verification/reader-mobile.png', animations: 'disabled' });
 
     await page.getByRole('button', { name: 'Открыть оглавление' }).click();
-    await page.getByRole('button', { name: /Глава 4. Ночная встреча/ }).click();
-    await expect(page.getByRole('heading', { name: 'Глава 4. Ночная встреча', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: new RegExp(chapter(4).title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) }).click();
+    await expect(page.getByRole('heading', { name: chapter(4).title, exact: true })).toBeVisible();
 
     await page.goto(new URL('/reader/book_002?chapterId=book_002_ch_03', baseUrl).href);
     await expect(page.getByText('Платная глава', { exact: true })).toBeVisible();

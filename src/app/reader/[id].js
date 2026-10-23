@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import Text from '../../components/AppText';
 import AsyncState from '../../components/AsyncState';
 import ChapterPickerModal from '../../components/ChapterPickerModal';
@@ -28,11 +28,11 @@ export default function ReaderScreen() {
   );
 }
 
-// Keep all writes in one queue so an earlier scroll cannot overwrite a later chapter.
+// Register writes with the API immediately; its per-book queue also protects resume reads.
 function useProgressWriter(bookId) {
   const latest = useRef(null);
   const timer = useRef(null);
-  const queue = useRef(Promise.resolve());
+  const lastRequest = useRef(Promise.resolve());
   const lastQueued = useRef(null);
   const mounted = useRef(true);
   const [saveError, setSaveError] = useState('');
@@ -41,12 +41,10 @@ function useProgressWriter(bookId) {
     clearTimeout(timer.current);
     const position = latest.current;
     if (!position) return Promise.resolve();
-    if (position === lastQueued.current) return queue.current;
+    if (position === lastQueued.current) return lastRequest.current;
     lastQueued.current = position;
-    const request = queue.current.catch(() => {}).then(async () => {
-      await saveReadingProgress(bookId, position.chapterId, position.percent);
-    });
-    queue.current = request;
+    const request = saveReadingProgress(bookId, position.chapterId, position.percent);
+    lastRequest.current = request;
     request.then(
       () => { if (mounted.current) setSaveError(''); },
       () => {
@@ -104,6 +102,8 @@ function ReaderContent({ book, chapters, progress, requestedChapterId, settings 
     void flush().catch(() => {});
     setInitialPercent(0);
     setChapterId(nextId);
+    // Keep the explicit chapter current when this screen reloads on focus or refresh.
+    router.setParams({ chapterId: nextId });
   }
 
   return (

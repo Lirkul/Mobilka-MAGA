@@ -4,6 +4,8 @@ const fs = require('node:fs/promises');
 const expect = baseExpect.configure({ timeout: 15000 });
 
 async function main() {
+  const { chapters } = await import('../src/data/chapters.js');
+  const secondChapter = chapters.find((chapter) => chapter.id === 'book_002_ch_02');
   await fs.mkdir('.expo/verification', { recursive: true });
   const browser = await chromium.launch({ channel: 'chrome', headless: true });
   const page = await browser.newPage({ viewport: { width: 393, height: 852 } });
@@ -89,7 +91,7 @@ async function main() {
     await button('Доступ без сети: «Стражи Пепельных врат»').click();
     await expect(heading('Доступ без сети')).toBeVisible(); await button('ПОНЯТНО').click();
     await button('Читать «Стражи Пепельных врат»').click();
-    await expect(heading('Глава 2. Тайный знак')).toBeVisible();
+    await expect(heading(secondChapter.title)).toBeVisible();
     await expect(page.getByText('24% главы', { exact: true })).toBeVisible();
     await button('Назад').click();
     await expect(card).toBeVisible();

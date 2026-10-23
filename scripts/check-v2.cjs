@@ -3,6 +3,8 @@ const expect = baseExpect.configure({ timeout: 15000 });
 const fs = require('node:fs/promises');
 
 async function main() {
+  const { chapters } = await import('../src/data/chapters.js');
+  const secondChapter = chapters.find((chapter) => chapter.id === 'book_001_ch_02');
   const base = process.env.EXPO_WEB_URL || 'http://localhost:8081';
   const browser = await chromium.launch({ channel: 'chrome', headless: true });
   const context = await browser.newContext({ viewport: { width: 393, height: 852 } });
@@ -18,6 +20,17 @@ async function main() {
     await expect(page.getByRole('dialog')).toBeVisible();
     await button(name === 'Настройки' ? 'Общие настройки' : name).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
+    if (name === 'Настройки') {
+      await expect(page.getByRole('switch', { name: 'Имитация отсутствия интернета', exact: true })).toBeVisible();
+      await expect(button('Задержка ответа')).toBeVisible();
+      await expect(page.getByText('Учебные настройки', { exact: true })).toHaveCount(0);
+      await expect(page.getByText(/Эти параметры имитируют ответы локального API/)).toHaveCount(0);
+      await expect(page.getByText('Пустая выдача', { exact: true })).toHaveCount(0);
+      await expect(page.getByText('Проверка состояния без результатов', { exact: true })).toHaveCount(0);
+      await expect(button('Ошибка следующего запроса')).toHaveCount(0);
+      await expect(page.getByText(/Библиотека, статусы, главы, прогресс и настройки читалки сохраняются/)).toHaveCount(0);
+      await expect(page.getByRole('switch')).toHaveCount(1);
+    }
   }
   try {
     await fs.mkdir('.expo/verification', { recursive: true });
@@ -34,7 +47,7 @@ async function main() {
     await expect(button('Статус в библиотеке: Читаю')).toBeVisible();
     await button('ЧИТАТЬ').click();
     await button('Следующая глава').click();
-    await expect(page.getByRole('heading', { name: 'Глава 2. Тайный знак' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: secondChapter.title })).toBeVisible();
     await page.getByTestId('reader-scroll').evaluate((node) => { node.scrollTop = (node.scrollHeight - node.clientHeight) * 0.6; });
     await expect(page.getByText('60% главы', { exact: true })).toBeVisible();
     // Allow the debounced write to become durable before simulating a hard reload.
@@ -67,6 +80,7 @@ async function main() {
 
     console.log('CHECK B: offline, local reading, retry, settings persistence');
     await menu('Настройки');
+    await screenshot('settings');
     await page.getByRole('switch', { name: 'Имитация отсутствия интернета' }).click();
     await expect(page.getByText('Сеть отключена', { exact: true })).toBeVisible();
     await page.reload();
@@ -80,7 +94,7 @@ async function main() {
     await button('В БИБЛИОТЕКУ').click();
     await page.getByTestId('book-result-book_001').click();
     await button('ПРОДОЛЖИТЬ ЧТЕНИЕ').click();
-    await expect(page.getByRole('heading', { name: 'Глава 2. Тайный знак' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: secondChapter.title })).toBeVisible();
     await expect(page.getByText('60% главы', { exact: true })).toBeVisible();
     await menu('Настройки');
     await page.getByRole('switch', { name: 'Имитация отсутствия интернета' }).click();
@@ -90,7 +104,7 @@ async function main() {
     await menu('Главная');
     await expect(page.getByText('Популярное', { exact: true })).toBeVisible();
 
-    console.log('CHECK C: independent search, AND, empty, generic error and retry');
+    console.log('CHECK C: independent search, AND, empty, loading and offline retry');
     const filters = { genres: ['Тёмное фэнтези', 'Боевая фантастика'], status: 'ongoing', access: 'free' };
     await visit(`/results?mode=discover&filters=${encodeURIComponent(JSON.stringify(filters))}`);
     await expect(page.getByText('Найдено книг: 2', { exact: true })).toBeVisible();
@@ -120,10 +134,7 @@ async function main() {
     await menu('Настройки');
     await button('Задержка ответа').click();
     await expect(page.getByText('1500 мс', { exact: true })).toBeVisible();
-    await button('Ошибка следующего запроса').click();
     await button('Назад').click();
-    await expect(page.getByText('Временная ошибка сервера. Повторите попытку.', { exact: true })).toBeVisible();
-    await button('Повторить').click();
     await expect(page.getByText('Загрузка…', { exact: true })).toBeVisible();
     await expect(page.getByText('Найдено книг: 19', { exact: true })).toBeVisible();
     await menu('Настройки');
@@ -144,13 +155,7 @@ async function main() {
     await expect(page.getByText('Найдено книг: 19', { exact: true })).toBeVisible();
     await menu('Настройки');
     await button('Задержка ответа').click();
-    await page.getByRole('switch', { name: 'Пустая выдача', exact: true }).click();
-    await expect(page.getByRole('switch', { name: 'Пустая выдача', exact: true })).toBeChecked();
-    await button('Назад').click();
-    await expect(page.getByTestId('empty-state')).toBeVisible();
-    await menu('Настройки');
-    await page.getByRole('switch', { name: 'Пустая выдача', exact: true }).click();
-    await expect(page.getByRole('switch', { name: 'Пустая выдача', exact: true })).not.toBeChecked();
+    await expect(page.getByText('240 мс', { exact: true })).toBeVisible();
 
     console.log('CHECK D: author tabs, notes, subscription, blog, artwork, reader settings');
     await visit('/author/author_01');
@@ -202,7 +207,7 @@ async function main() {
     await page.keyboard.press('Escape');
     await expect(page.getByRole('dialog')).toHaveCount(0);
     expect(errors).toEqual([]);
-    console.log('PASS A/B/C/D: persistent shelves/progress/settings after F5; offline/local reading/retry; independent AND/search; loading/empty/error; author tabs/subscription/note/blog/art; reader settings; no browser errors.');
+    console.log('PASS A/B/C/D: persistent shelves/progress/settings after F5; simplified settings; offline/local reading/retry; independent AND/search; loading/empty; author tabs/subscription/note/blog/art; reader settings; no browser errors.');
   } catch (error) {
     await screenshot('failure').catch(() => {});
     console.error('Browser errors:', errors);
