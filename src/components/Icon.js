@@ -78,6 +78,7 @@ export default function Icon({ name, size = 24, color = colors.secondary }) {
     doubleCheck: 'm2 12 5 5L18 5M9 14l3 3L23 5',
     ruble: 'M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0ZM10 19V6h4c5 0 5 7 0 7H8m0 3h8',
     eyeOff: 'M2 12c6-9 14-9 20 0-6 9-14 9-20 0ZM8 12a4 4 0 1 0 8 0 4 4 0 0 0-8 0ZM3 22 22 2',
+    eye: 'M2 12c6-9 14-9 20 0-6 9-14 9-20 0ZM8 12a4 4 0 1 0 8 0 4 4 0 0 0-8 0Z',
     filter: 'M2 3h20l-8 9v8l-4 3V12Z',
     sort: 'M3 5h18M3 12h12M3 19h6',
   };

@@ -13,6 +13,9 @@ import EmptyState from '../components/EmptyState';
 import { normalizeText } from '../utils/filterBooks';
 import { additionalFields, createDefaultFilters, filterFields } from '../data/filters';
 import { colors } from '../theme';
+import Icon from '../components/Icon';
+import LibraryStatusModal from '../components/LibraryStatusModal';
+import { setLibraryStatus } from '../services/mockApi';
 
 function decodeFilters(serialized) {
   const filters = createDefaultFilters();
@@ -35,6 +38,9 @@ export default function ResultsScreen() {
   const serialized = typeof params.filters === 'string' ? params.filters : '';
   const filters = useMemo(() => decodeFilters(serialized), [serialized]);
   const [panelVisible, setPanelVisible] = useState(false);
+  const [statusBook, setStatusBook] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [statusError, setStatusError] = useState('');
   const loader = useCallback(() => mode === 'search' ? searchCatalog(query) : discoverBooks(filters), [mode, query, filters]);
   const { data, loading, error, reload } = useAsyncResource(loader);
   const rows = [];
@@ -52,7 +58,7 @@ export default function ResultsScreen() {
 
   function renderRow({ item: row }) {
     if (row.kind === 'heading') return <Text accessibilityRole="header" style={styles.heading}>{row.title}</Text>;
-    if (row.kind === 'book') return <BookResultItem book={row.item} />;
+    if (row.kind === 'book') return <BookResultItem book={row.item} onStatus={() => { setStatusError(''); setStatusBook(row.item); }} />;
     if (row.kind === 'author') {
       return <AuthorResultItem author={row.item} />;
     }
@@ -64,12 +70,27 @@ export default function ResultsScreen() {
   }
 
   const total = mode === 'discover' ? data?.total : (data ? data.books.length + data.authors.length + data.posts.length : 0);
+  const activeCount = [...filterFields, ...additionalFields].reduce((count, field) => {
+    const value = filters[field.key]; const initial = createDefaultFilters()[field.key];
+    return count + (Array.isArray(value) ? value.length : value !== initial ? 1 : 0);
+  }, 0);
+  async function changeStatus(status) {
+    if (saving) return;
+    setSaving(true); setStatusError('');
+    try { await setLibraryStatus(statusBook.id, status); setStatusBook(null); await reload(); }
+    catch (failure) { setStatusError(failure.message); }
+    finally { setSaving(false); }
+  }
   return (
-    <ScreenFrame title={mode === 'search' ? 'Результаты поиска' : 'Подбор книг'}>
+    <ScreenFrame title={mode === 'search' ? 'Результаты поиска' : 'Подбор книг'} catalogHeader onSearch={() => setPanelVisible(true)}>
+      {mode === 'search' && <Text accessibilityRole="header" style={styles.searchHeading}>Результаты поиска</Text>}
       <View style={styles.summary}>
         <Text accessibilityLiveRegion="polite" style={styles.summaryText}>{mode === 'search' ? `Поиск: «${query}»` : `Найдено книг: ${total ?? '…'}`}</Text>
-        <Pressable accessibilityRole="button" onPress={() => setPanelVisible(true)} style={styles.filters}><Text style={styles.filterText}>{mode === 'search' ? 'НОВЫЙ ПОИСК' : 'ФИЛЬТРЫ'}</Text></Pressable>
-        {!error && <Pressable accessibilityRole="button" accessibilityLabel="Обновить результаты" onPress={reload} style={styles.refresh}><Text style={styles.filterText}>ОБНОВИТЬ</Text></Pressable>}
+        <View style={styles.tools}>
+          <Pressable accessibilityRole="button" accessibilityLabel={mode === 'search' ? 'НОВЫЙ ПОИСК' : 'ФИЛЬТРЫ'} onPress={() => setPanelVisible(true)} style={styles.filters}><Text style={styles.filterText}>{mode === 'search' ? 'НОВЫЙ ПОИСК' : `ФИЛЬТРЫ${activeCount ? ` (${activeCount})` : ''}`}</Text></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="Открыть параметры подбора" onPress={() => setPanelVisible(true)} style={styles.round}><Icon name="down" color={colors.accent} size={22} /></Pressable>
+          {!error && <Pressable accessibilityRole="button" accessibilityLabel="Обновить результаты" onPress={reload} style={styles.refresh}><Icon name="reset" color={colors.accent} size={18} /></Pressable>}
+        </View>
       </View>
       <AsyncState loading={loading} error={error} onRetry={reload} />
       {!loading && !error && data && (total === 0 ? <EmptyState /> : <FlatList
@@ -79,16 +100,20 @@ export default function ResultsScreen() {
         contentContainerStyle={styles.list}
       />)}
       <SearchPanel key={`${mode}:${serialized}:${query}`} visible={panelVisible} initialFilters={filters} initialQuery={query} onClose={() => setPanelVisible(false)} onSearch={(q) => router.setParams({ mode: 'search', q })} onDiscover={(next) => router.setParams({ mode: 'discover', filters: JSON.stringify(next) })} />
+      <LibraryStatusModal visible={!!statusBook} status={statusBook?.libraryStatus} saving={saving} error={statusError} onSelect={changeStatus} onClose={() => setStatusBook(null)} />
     </ScreenFrame>
   );
 }
 
 const styles = StyleSheet.create({
-  summary: { padding: 16, gap: 16 },
+  summary: { padding: 16, gap: 16, paddingTop: 10, paddingBottom: 10 },
+  searchHeading: { color: colors.text, backgroundColor: colors.segment, fontSize: 14, paddingHorizontal: 16, paddingVertical: 10 },
   summaryText: { color: colors.text, fontSize: 14 },
-  filters: { borderWidth: 1, borderColor: colors.accent, minHeight: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 8 },
+  tools: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  filters: { flex: 1, borderWidth: 1, borderColor: colors.accent, minHeight: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 8 },
+  round: { width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
   filterText: { color: colors.accent, fontSize: 14, fontWeight: '500', letterSpacing: 1 },
-  refresh: { minHeight: 32, justifyContent: 'center', alignItems: 'center' },
+  refresh: { width: 28, minHeight: 44, justifyContent: 'center', alignItems: 'center' },
   list: { paddingBottom: 24 },
   heading: { color: colors.text, fontSize: 16, fontWeight: '700', padding: 16, backgroundColor: colors.card },
   author: { margin: 8, padding: 12, borderRadius: 12, backgroundColor: colors.segment, flexDirection: 'row', alignItems: 'center', gap: 16 },

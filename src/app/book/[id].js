@@ -65,7 +65,7 @@ export default function BookScreen() {
   const book = data?.book;
 
   return (
-    <ScreenFrame title="О книге">
+    <ScreenFrame title="О книге" catalogHeader>
       <AsyncState loading={loading} error={error} onRetry={reload} />
       {!!data && !loading && !error && (
         <ScrollView contentContainerStyle={styles.content}>
@@ -88,11 +88,12 @@ export default function BookScreen() {
                 <Text style={styles.access}>{book.access === 'free' ? 'Свободный доступ' : book.access === 'paid' ? `${book.priceRub} ₽` : 'Подписка на серию'}</Text>
               </View>
               <Text style={styles.genres}>{formLabels[book.form] || 'Произведение'} / {book.genres.join(', ')}</Text>
+              <Text style={styles.secondary}>{(book.textLength || 0).toLocaleString('ru-RU')} зн.</Text>
             </View>
           </View>
 
           <View style={styles.statistics}>
-            <View style={styles.statistic}><Text style={styles.statisticNumber}><Text style={styles.heart}>♡</Text> {book.stats.likes}</Text><Text style={styles.statisticLabel}>Нравится</Text></View>
+            <View style={styles.statistic}><View style={styles.commentNumber}><Icon name="heart" color="#ef715c" size={24} /><Text style={styles.statisticNumber}>{book.stats.likes}</Text></View><Text style={styles.statisticLabel}>Нравится</Text></View>
             <Pressable onPress={() => setTab('comments')} accessibilityRole="button" accessibilityLabel="Показать комментарии" style={styles.statistic}>
               <View style={styles.commentNumber}><Icon name="chat" color={colors.accent} /><Text style={styles.statisticNumber}>{book.stats.comments}</Text></View>
               <Text style={styles.statisticLabel}>Комментарии</Text>
@@ -102,10 +103,14 @@ export default function BookScreen() {
           <Pressable onPress={() => openReader(null)} accessibilityRole="button" style={styles.readButton}>
             <Text style={styles.readLabel}>{book.readingProgress?.chapterId ? 'ПРОДОЛЖИТЬ ЧТЕНИЕ' : 'ЧИТАТЬ'}</Text>
           </Pressable>
+          <View style={styles.bookActions}>
           <Pressable onPress={() => { setStatusError(''); setStatusVisible(true); }} accessibilityRole="button" accessibilityLabel={book.libraryStatus ? `Статус в библиотеке: ${libraryStatusLabels[book.libraryStatus]}` : 'В библиотеку'} style={styles.libraryButton}>
-            <Icon name="book" color={colors.accent} />
+            <Icon name={book.libraryStatus ? 'check' : 'plus'} color={colors.accent} />
             <Text style={styles.libraryLabel}>{libraryStatusLabels[book.libraryStatus] || 'В библиотеку'}</Text>
           </Pressable>
+          <Pressable onPress={() => setChaptersVisible(true)} accessibilityRole="button" accessibilityLabel="Оглавление произведения" style={styles.squareAction}><Icon name="openBook" color={colors.accent} /></Pressable>
+          <Pressable onPress={() => setTab('comments')} accessibilityRole="button" accessibilityLabel="Отзывы о произведении" style={styles.squareAction}><Icon name="chat" color={colors.accent} /></Pressable>
+          </View>
 
           <View accessibilityRole="tablist" style={styles.tabs}>
             {[['about', 'О книге'], ['tags', 'Тэги'], ['comments', 'Отзывы']].map(([value, label]) => (
@@ -166,8 +171,10 @@ const styles = StyleSheet.create({
   commentNumber: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 29 },
   readButton: { backgroundColor: colors.accent, minHeight: 49, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
   readLabel: { color: colors.text, fontWeight: '700', fontSize: 14, letterSpacing: 0.5 },
-  libraryButton: { minHeight: 48, borderRadius: 8, borderWidth: 1, borderColor: colors.accent, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
-  libraryLabel: { color: colors.accent, fontWeight: '700', fontSize: 15 },
+  bookActions: { flexDirection: 'row', gap: 6 },
+  squareAction: { width: 44, minHeight: 48, borderRadius: 8, borderWidth: 1, borderColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
+  libraryButton: { flex: 1, minHeight: 48, borderRadius: 8, borderWidth: 1, borderColor: colors.accent, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 4 },
+  libraryLabel: { color: colors.accent, fontWeight: '700', fontSize: 14, flexShrink: 1 },
   tabs: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: colors.divider, marginTop: 20 },
   tab: { minHeight: 48, justifyContent: 'center', paddingHorizontal: 13, borderBottomWidth: 2, borderBottomColor: 'transparent' },
   activeTab: { borderBottomColor: '#75aef0' },

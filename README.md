@@ -102,6 +102,7 @@ node scripts/check-menus.cjs
 node scripts/check-library.cjs
 node scripts/check-reader-books.cjs
 node scripts/check-reader-focus.cjs
+node scripts/check-dz2-ui.cjs
 ```
 
 Для другого порта в PowerShell: `$env:EXPO_WEB_URL='http://localhost:8082'`.
@@ -113,6 +114,11 @@ node scripts/check-reader-focus.cjs
 из «Не интересно», сокращённый экран настроек, offline/retry/empty/loading,
 независимость поиска и подбора, вкладки автора и настройки читалки.
 Скриншоты проверки сохраняются в игнорируемую Git папку `.expo/verification`.
+
+Визуальная доработка ДЗ2 описана в [списке расхождений и проверок](docs/DZ2_VISUAL_REVIEW.md).
+Проверить её в текущей сессии можно на `http://localhost:8085`: главная → лупа →
+«ПОДОБРАТЬ» либо поиск по названию. `check-dz2-ui.cjs` проверяет оба сценария,
+окна параметров, возврат и размещение элементов на ширине 320/393/1440.
 
 ## Тексты книг
 

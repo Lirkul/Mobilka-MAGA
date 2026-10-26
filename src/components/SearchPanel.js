@@ -84,7 +84,7 @@ export default function SearchPanel({ visible, onClose, onSearch, onDiscover, in
             <Text accessibilityRole="header" style={[styles.heading, styles.discoveryHeading]}>Подберите книги по интересам</Text>
             {filterFields.map((field) => <FilterRow key={field.key} label={field.label} value={getFilterLabel(field, filters[field.key])} onPress={() => { Keyboard.dismiss(); setPicker(field); }} />)}
             <Pressable accessibilityRole="button" accessibilityLabel="Дополнительные фильтры" aria-expanded={expanded} accessibilityState={{ expanded }} onPress={() => setExpanded(!expanded)} style={styles.additional}>
-              <Text style={styles.additionalText}>Дополнительно</Text><Icon name={expanded ? 'down' : 'left'} size={20} />
+              <Text style={styles.additionalText}>Дополнительно</Text><Icon name={expanded ? 'down' : 'left'} size={20} color={colors.secondary} />
             </Pressable>
             {expanded && <View style={styles.additionalFields}>
               {additionalFields.map((field) => <FilterRow key={field.key} label={field.label} value={getFilterLabel(field, filters[field.key])} onPress={() => setPicker(field)} />)}
@@ -111,18 +111,18 @@ export default function SearchPanel({ visible, onClose, onSearch, onDiscover, in
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.64)' },
   panel: { backgroundColor: colors.panel, width: '100%', maxWidth: layout.maxWidth, maxHeight: '92%', flexShrink: 1 },
-  content: { paddingHorizontal: 16, paddingTop: 22, paddingBottom: 8 },
+  content: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
   heading: { color: colors.text, fontSize: 14, fontWeight: '700', lineHeight: 20, marginBottom: 14 },
   searchRow: { flexDirection: 'row', gap: 16, alignItems: 'center' },
-  input: { flex: 1, minWidth: 0, height: 53, borderWidth: 1, borderColor: colors.accent, borderRadius: 8, paddingHorizontal: 15, fontSize: 14, fontFamily: fonts.regular, color: colors.text },
-  searchButton: { width: 51, height: 51, backgroundColor: colors.accent, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  input: { flex: 1, minWidth: 0, height: 44, borderWidth: 1, borderColor: colors.accent, borderRadius: 6, paddingHorizontal: 12, fontSize: 14, fontFamily: fonts.regular, color: colors.text },
+  searchButton: { width: 44, height: 44, backgroundColor: colors.accent, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
   divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: -16, marginTop: 11, marginBottom: 18 },
   line: { flex: 1, height: 1, backgroundColor: colors.divider },
   or: { color: colors.divider, fontWeight: '700', fontSize: 16 },
   discoveryHeading: { marginBottom: 18 },
   additional: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
   additionalText: { color: colors.text, fontSize: 14 },
-  additionalFields: { paddingLeft: 16, marginBottom: 8 },
+  additionalFields: { marginBottom: 8 },
   discoverButton: { minHeight: 44, backgroundColor: colors.accent, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   discoverText: { color: colors.text, fontSize: 14, fontWeight: '500' },
   reset: { minHeight: 55, alignItems: 'center', justifyContent: 'center', marginTop: 8 },

@@ -6,7 +6,7 @@ export default function FilterRow({ label, value, onPress }) {
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={`${label}: ${value}`} onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
       <Text style={styles.label}>{label}</Text>
-      <Text style={styles.value}>{value}</Text>
+      <Text style={styles.value} numberOfLines={1}>{value}</Text>
     </Pressable>
   );
 }

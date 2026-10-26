@@ -50,7 +50,7 @@ async function main() {
 
     step('working audio and genre navigation');
     await left(); await button('Аудиокниги').click();
-    await expect(heading('Подбор книг')).toBeVisible();
+    await expect(page.getByText(/^Найдено книг: \d+$/, { exact: true })).toBeVisible();
     await expect(page.locator('[data-testid^="book-result-"]:visible').first()).toBeVisible();
     const { books } = await import('../src/data/books.js');
     await expect(page.locator('[data-testid^="book-result-"]:visible')).toHaveCount(books.filter((book) => book.formats.includes('audio') && book.id !== 'book_012').length);

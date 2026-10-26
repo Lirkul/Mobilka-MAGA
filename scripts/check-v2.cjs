@@ -100,7 +100,7 @@ async function main() {
     await page.getByRole('switch', { name: 'Имитация отсутствия интернета' }).click();
     await expect(page.getByText('Сеть включена', { exact: true })).toBeVisible();
     await button('Назад').click();
-    await expect(page.getByRole('heading', { name: 'Чтение', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: secondChapter.title, exact: true })).toBeVisible();
     await menu('Главная');
     await expect(page.getByText('Популярное', { exact: true })).toBeVisible();
 

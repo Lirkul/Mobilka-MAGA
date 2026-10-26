@@ -9,6 +9,9 @@ import ReaderSettingsModal from '../../components/ReaderSettingsModal';
 import useAsyncResource from '../../hooks/useAsyncResource';
 import { getBookById, getChapter, getChapters, getReadingProgress, getSettings, updateSettings, saveReadingProgress } from '../../services/mockApi';
 import { colors } from '../../theme';
+import Icon from '../../components/Icon';
+import NavigationMenu from '../../components/NavigationMenu';
+import { StatusBar } from 'expo-status-bar';
 
 export default function ReaderScreen() {
   const { id: routeId, chapterId: routeChapter } = useLocalSearchParams();
@@ -19,11 +22,25 @@ export default function ReaderScreen() {
     return { book, chapters, progress, settings };
   }, [id]);
   const { data, loading, error, reload } = useAsyncResource(loader);
+  const [chaptersVisible, setChaptersVisible] = useState(false);
+  const [settingsVisible, setSettingsVisible] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [focused, setFocused] = useState(true);
+  useFocusEffect(useCallback(() => {
+    setFocused(true);
+    return () => setFocused(false);
+  }, []));
 
   return (
-    <ScreenFrame title="Чтение">
+    <ScreenFrame title={data?.book.title || 'Чтение'} lightHeader accentBack headerActions={<>
+      <Pressable accessibilityRole="button" accessibilityLabel="Открыть оглавление" onPress={() => setChaptersVisible(true)} style={styles.headerAction}><Icon name="openBook" color={colors.accent} size={23} /></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel="Настройки чтения" onPress={() => setSettingsVisible(true)} style={styles.headerAction}><Icon name="settings" color={colors.accent} size={23} /></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel="Открыть меню" onPress={() => setMenuVisible(true)} style={styles.headerAction}><Icon name="menu" color={colors.accent} size={23} /></Pressable>
+    </>}>
+      <StatusBar style={focused ? 'dark' : 'light'} />
       <AsyncState loading={loading} error={error} onRetry={reload} />
-      {!!data && !loading && !error && <ReaderContent key={data.book.id} book={data.book} chapters={data.chapters} progress={data.progress} requestedChapterId={chapterId} settings={data.settings.reader} />}
+      {!!data && !loading && !error && <ReaderContent key={data.book.id} book={data.book} chapters={data.chapters} progress={data.progress} requestedChapterId={chapterId} settings={data.settings.reader} chaptersVisible={chaptersVisible} setChaptersVisible={setChaptersVisible} settingsVisible={settingsVisible} setSettingsVisible={setSettingsVisible} />}
+      <NavigationMenu visible={menuVisible} onClose={() => setMenuVisible(false)} />
     </ScreenFrame>
   );
 }
@@ -77,16 +94,14 @@ function useProgressWriter(bookId) {
   return { record, flush, saveError };
 }
 
-function ReaderContent({ book, chapters, progress, requestedChapterId, settings }) {
+function ReaderContent({ book, chapters, progress, requestedChapterId, settings, chaptersVisible, setChaptersVisible, settingsVisible, setSettingsVisible }) {
   const [chapterId, setChapterId] = useState(() => {
     if (chapters.some((chapter) => chapter.id === requestedChapterId)) return requestedChapterId;
     if (chapters.some((chapter) => chapter.id === progress.chapterId)) return progress.chapterId;
     return chapters[0]?.id || null;
   });
   const [initialPercent, setInitialPercent] = useState(chapterId === progress.chapterId ? progress.percent : 0);
-  const [chaptersVisible, setChaptersVisible] = useState(false);
   const [preferences, setPreferences] = useState(settings);
-  const [settingsVisible, setSettingsVisible] = useState(false);
   const [settingsError, setSettingsError] = useState('');
   const { record, flush, saveError } = useProgressWriter(book.id);
   const chapterIndex = chapters.findIndex((chapter) => chapter.id === chapterId);
@@ -108,15 +123,11 @@ function ReaderContent({ book, chapters, progress, requestedChapterId, settings 
 
   return (
     <View style={[styles.reader, preferences.theme === 'dark' && { backgroundColor: colors.background }]}>
-      <View style={styles.tocButton}><Pressable onPress={() => setChaptersVisible(true)} accessibilityRole="button" accessibilityLabel="Открыть оглавление" style={styles.tocAction}>
-        <Text style={styles.tocLabel}>☰  Оглавление</Text>
-        <Text style={styles.chapterCount}>{Math.max(0, chapterIndex + 1)} / {chapters.length}</Text>
-      </Pressable><Pressable accessibilityRole="button" accessibilityLabel="Настройки чтения" onPress={() => setSettingsVisible(true)} style={styles.tocAction}><Text style={styles.tocLabel}>Aa</Text></Pressable></View>
       {!!saveError && <View style={styles.saveError}>
         <Text accessibilityRole="alert" style={styles.saveErrorText}>{saveError}</Text>
         <Pressable onPress={() => { void flush().catch(() => {}); }} accessibilityRole="button" style={styles.retrySave}><Text style={styles.retrySaveText}>ПОВТОРИТЬ</Text></Pressable>
       </View>}
-      {chapterId ? <ReaderChapter key={chapterId} book={book} chapterId={chapterId} initialPercent={initialPercent} onProgress={record} preferences={preferences} /> : <Text style={styles.empty}>Главы пока не опубликованы.</Text>}
+      {chapterId ? <ReaderChapter key={chapterId} book={book} chapterId={chapterId} initialPercent={initialPercent} onProgress={record} preferences={preferences} chapterNumber={chapterIndex + 1} chapterCount={chapters.length} /> : <Text style={styles.empty}>Главы пока не опубликованы.</Text>}
       <View style={styles.navigation}>
         <Pressable disabled={chapterIndex <= 0} onPress={() => chooseChapter(chapters[chapterIndex - 1].id)} accessibilityRole="button" accessibilityLabel="Предыдущая глава" style={[styles.navigationButton, chapterIndex <= 0 && styles.disabled]}>
           <Text style={styles.navigationLabel}>‹ Предыдущая</Text>
@@ -131,7 +142,7 @@ function ReaderContent({ book, chapters, progress, requestedChapterId, settings 
   );
 }
 
-function ReaderChapter({ book, chapterId, initialPercent, onProgress, preferences }) {
+function ReaderChapter({ book, chapterId, initialPercent, onProgress, preferences, chapterNumber, chapterCount }) {
   const loader = useCallback(() => getChapter(book.id, chapterId), [book.id, chapterId]);
   const { data: chapter, loading, error, reload } = useAsyncResource(loader);
   const scroll = useRef(null);
@@ -195,12 +206,13 @@ function ReaderChapter({ book, chapterId, initialPercent, onProgress, preference
             onScroll={trackPosition}
             scrollEventThrottle={100}
           >
-            <Text style={[styles.bookTitle, textColor]}>{book.title}</Text>
-            <Text style={[styles.byline, textColor]}>{book.authorNames.join(', ')}</Text>
             <Text accessibilityRole="header" style={[styles.chapterTitle, textColor]}>{chapter.title}</Text>
             {chapter.text.split('\n\n').map((paragraph, index) => <Text key={index} selectable style={[styles.paragraph, textColor, { fontSize: preferences.fontSize, lineHeight: preferences.fontSize + 8 }]}>{'    '}{paragraph}</Text>)}
           </ScrollView>
-          <Text accessibilityLabel={`Прочитано ${percent} процентов главы`} style={styles.progress}>{percent}% главы</Text>
+          <View style={styles.progressFooter}>
+            <View style={styles.progressLine}><Icon name="documents" size={19} color={colors.accent} /><View accessibilityRole="progressbar" accessibilityLabel="Прогресс главы" accessibilityValue={{ min: 0, max: 100, now: percent }} style={styles.progressTrack}><View style={[styles.progressFill, { width: `${percent}%` }]} /></View><Text style={styles.pageNumber}>{chapterNumber} / {chapterCount}</Text></View>
+            <Text accessibilityLabel={`Прочитано ${percent} процентов главы`} style={styles.progress}>{percent}% главы</Text>
+          </View>
         </>
       ))}
     </View>
@@ -209,20 +221,23 @@ function ReaderChapter({ book, chapterId, initialPercent, onProgress, preference
 
 const styles = StyleSheet.create({
   reader: { flex: 1, backgroundColor: '#f9f8f2' },
+  headerAction: { minWidth: 44, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
   tocAction: { flexDirection: 'row', gap: 16, alignItems: 'center', minHeight: 46, paddingHorizontal: 4 },
   tocButton: { minHeight: 46, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, backgroundColor: '#eeede7', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#c9c8c2' },
   tocLabel: { color: '#3b718f', fontSize: 14 },
   chapterCount: { color: '#65655f', fontSize: 12 },
   chapterBody: { flex: 1 },
   pages: { flex: 1 },
-  pageContent: { paddingHorizontal: 13, paddingTop: 18, paddingBottom: 20 },
+  pageContent: { paddingHorizontal: 10, paddingTop: 0, paddingBottom: 20 },
   bookTitle: { textAlign: 'center', color: '#484844', fontSize: 18, lineHeight: 25 },
   byline: { textAlign: 'center', color: '#484844', fontSize: 16, lineHeight: 24, marginTop: 3 },
-  chapterTitle: { textAlign: 'center', color: '#484844', fontSize: 21, lineHeight: 28, fontWeight: '700', marginTop: 26, marginBottom: 22 },
+  chapterTitle: { textAlign: 'center', color: '#484844', fontSize: 21, lineHeight: 28, fontWeight: '700', marginTop: 18, marginBottom: 22 },
   paragraph: { color: '#484844', fontSize: 18, lineHeight: 26, textAlign: 'justify', marginBottom: 12 },
+  progressFooter: { backgroundColor: '#ffffff', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#d8d8d4', paddingHorizontal: 14, paddingTop: 10 },
+  progressLine: { flexDirection: 'row', gap: 12, alignItems: 'center' }, progressTrack: { height: 3, flex: 1, backgroundColor: '#cccac7', borderRadius: 2 }, progressFill: { height: 3, backgroundColor: colors.accent, borderRadius: 2 }, pageNumber: { color: '#969a9d', fontSize: 11 },
   progress: { color: '#74746e', fontSize: 11, textAlign: 'center', paddingVertical: 5 },
-  navigation: { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#c9c8c2', backgroundColor: '#eeede7' },
-  navigationButton: { flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
+  navigation: { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#e1e1df', backgroundColor: '#ffffff' },
+  navigationButton: { flex: 1, minHeight: 40, alignItems: 'center', justifyContent: 'center' },
   navigationLabel: { color: '#3b718f', fontSize: 13 },
   disabled: { opacity: 0.35 },
   empty: { color: '#484844', fontSize: 16, padding: 24, flex: 1 },
