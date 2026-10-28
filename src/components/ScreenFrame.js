@@ -10,23 +10,27 @@ import UserMenu from './UserMenu';
 import AppHeader from './AppHeader';
 import SearchPanel from './SearchPanel';
 
-export default function ScreenFrame({ title, children, scroll = false, headerActions = null, headerTitle = null, accentBack = false, catalogHeader = false, onSearch = null, lightHeader = false, headerHidden = false }) {
+export default function ScreenFrame({ title, children, scroll = false, headerActions = null, headerTitle = null, accentBack = false, catalogHeader = false, onSearch = null, lightHeader = false, headerHidden = false, overlayHeader = false }) {
   const [menu, setMenu] = useState(false);
   const [userMenu, setUserMenu] = useState(false);
   const [searchVisible, setSearchVisible] = useState(false);
   const goBack = () => { if (router.canGoBack()) router.back(); else router.replace('/'); };
+  const header = !headerHidden && (catalogHeader ? <AppHeader onBack={goBack} onSearch={onSearch || (() => setSearchVisible(true))} /> : <View style={[styles.bar, lightHeader && styles.lightBar]}>
+    <Pressable accessibilityRole="button" accessibilityLabel="Назад" onPress={goBack} style={styles.back}><Icon name="left" color={accentBack ? colors.accent : colors.secondary} /></Pressable>
+    {headerTitle || <Text accessibilityRole="header" style={[styles.title, lightHeader && styles.lightTitle]} numberOfLines={1}>{title}</Text>}
+    {headerActions || <>
+      <Pressable accessibilityRole="button" accessibilityLabel="Открыть меню" onPress={() => setMenu(true)} style={styles.back}><Icon name="menu" /></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel="Открыть меню пользователя" onPress={() => setUserMenu(true)} style={styles.back}><Icon name="avatar" size={30} /></Pressable>
+    </>}
+  </View>);
   return (
     <View style={styles.outer}>
       <SafeAreaView edges={catalogHeader ? ['bottom', 'left', 'right'] : ['top', 'bottom', 'left', 'right']} style={[styles.screen, lightHeader && styles.lightScreen]}>
-        {!headerHidden && (catalogHeader ? <AppHeader onBack={goBack} onSearch={onSearch || (() => setSearchVisible(true))} /> : <View style={[styles.bar, lightHeader && styles.lightBar]}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Назад" onPress={goBack} style={styles.back}><Icon name="left" color={accentBack ? colors.accent : colors.secondary} /></Pressable>
-          {headerTitle || <Text accessibilityRole="header" style={[styles.title, lightHeader && styles.lightTitle]} numberOfLines={1}>{title}</Text>}
-          {headerActions || <>
-          <Pressable accessibilityRole="button" accessibilityLabel="Открыть меню" onPress={() => setMenu(true)} style={styles.back}><Icon name="menu" /></Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel="Открыть меню пользователя" onPress={() => setUserMenu(true)} style={styles.back}><Icon name="avatar" size={30} /></Pressable>
-          </>}
-        </View>)}
-        {scroll ? <ScrollView contentContainerStyle={styles.content}>{children}</ScrollView> : <View style={styles.body}>{children}</View>}
+        {!overlayHeader && header}
+        <View style={styles.body}>
+          {scroll ? <ScrollView contentContainerStyle={styles.content}>{children}</ScrollView> : children}
+          {overlayHeader && header && <View style={styles.overlayHeader}>{header}</View>}
+        </View>
       </SafeAreaView>
       <NavigationMenu visible={menu} onClose={() => setMenu(false)} />
       <UserMenu visible={userMenu} onClose={() => setUserMenu(false)} />
@@ -46,4 +50,5 @@ const styles = StyleSheet.create({
   lightTitle: { color: '#484844', fontSize: 13, fontWeight: '400' },
   content: { padding: 16, paddingBottom: 32 },
   body: { flex: 1 },
+  overlayHeader: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 2 },
 });

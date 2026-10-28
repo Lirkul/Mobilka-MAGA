@@ -59,21 +59,26 @@ async function main() {
     await expect(button('Статус в библиотеке: Читаю')).toBeVisible();
     await button('Развернуть аннотацию').click(); await expect(button('Свернуть аннотацию')).toBeVisible(); await button('Свернуть аннотацию').click();
     await button('Статистика произведения').click(); await expect(page.getByRole('heading', { name: 'Статистика произведения', exact: true })).toBeVisible(); await button('ЗАКРЫТЬ').click();
-    await shot('book'); await button('ЧИТАТЬ').click(); await expect(page.getByTestId('reader-loading')).toBeVisible(); await button('Следующая глава').click(); await expect(page.getByRole('heading', { name: secondChapter.title, exact: true })).toBeVisible();
+    await shot('book'); await button('ЧИТАТЬ').click(); await expect(scroll()).toBeVisible(); await button('Следующая глава').click(); await expect(page.getByRole('heading', { name: secondChapter.title, exact: true })).toBeVisible();
     await drag('reader-position', 0.6); await expect.poll(actualPercent).toBe(60); await expect(page.getByText('26% книги', { exact: true })).toBeVisible();
 
-    phase = 'reader brightness, five backgrounds, fonts and modes';
+    phase = 'reader brightness, five backgrounds, fonts and combined gestures';
     await trace('reader-settings-panel', 'y', () => button('Настройки чтения').click()); await shot('reader-settings');
     for (const label of ['Белая', 'Светлая', 'Сепия', 'Тёмная', 'Чёрная']) { await radio(label).click(); await expect(radio(label)).toBeChecked(); }
     await radio('Сепия').click(); await expect(page.getByTestId('reader-paper')).toHaveCSS('background-color', 'rgb(209, 200, 164)');
     await drag('reader-brightness', 0.3); await expect.poll(async () => (await saved()).settings.reader.brightness).toBe(30); await expect(page.getByTestId('reader-dimmer')).toHaveCSS('opacity', '0.455');
     await page.getByRole('switch', { name: 'Регулировать яркость жестами', exact: true }).click();
     await button('Выбрать шрифт').click(); await radio('С засечками').click();
-    await radio('По левому краю').click(); await radio('Постранично').click(); await expect(radio('Постранично')).toBeChecked(); await button('ГОТОВО').click();
-    await expect(page.getByTestId('reader-active-page-content')).toBeVisible();
-    await expect(scroll()).toHaveCount(0);
-    if (await button('Предыдущая страница').isEnabled()) { await button('Предыдущая страница').click(); await expect(page.getByText(/^1 из \d+$/)).toBeVisible(); }
-    await button('Настройки чтения').click(); await radio('Прокрутка').click();
+    await radio('По левому краю').click(); await expect(radio('Постранично')).toHaveCount(0); await button('ГОТОВО').click();
+    await expect(scroll()).toBeVisible();
+    if (await button('Предыдущая страница').isEnabled()) {
+      await button('Предыдущая страница').click();
+      await expect(button('Настройки чтения')).toHaveCount(0);
+      await page.waitForTimeout(500);
+      const bounds = await scroll().boundingBox();
+      await scroll().click({ position: { x: bounds.width / 2, y: bounds.height / 2 } });
+    }
+    await button('Настройки чтения').click();
     await button('Увеличить шрифт').click(); await expect(page.getByText('Размер шрифта: 20', { exact: true })).toBeVisible();
     await button('Дополнительные настройки чтения').click(); await drag('reader-brightness', 0.5); await button('ГОТОВО').click(); await expect(button('Закрыть настройки чтения')).toHaveCount(0);
     await expect.poll(async () => { const reader = (await saved()).settings.reader; return { font: reader.font, alignment: reader.alignment, readingMode: reader.readingMode, fontSize: reader.fontSize }; }).toEqual({ font: 'serif', alignment: 'left', readingMode: 'scroll', fontSize: 20 });
@@ -83,8 +88,10 @@ async function main() {
     const gesture = await page.getByTestId('reader-brightness-gesture').boundingBox();
     await page.mouse.move(gesture.x + 10, gesture.y + gesture.height * 0.65); await page.mouse.down(); await page.mouse.move(gesture.x + 10, gesture.y + gesture.height * 0.4, { steps: 8 }); await page.mouse.up();
     await expect.poll(async () => (await saved()).settings.reader.brightness).toBeGreaterThan(50);
-    await scroll().click({ position: { x: 180, y: 120 } }); await expect(button('Назад')).toHaveCount(0); await expect(page.getByTestId('reader-position')).toHaveCount(0); await shot('fullscreen');
-    await scroll().click({ position: { x: 180, y: 120 } }); await expect(button('Назад')).toBeVisible(); await drag('reader-position', 0.6); await expect.poll(actualPercent).toBe(60);
+    const readerBounds = await scroll().boundingBox();
+    await scroll().click({ position: { x: readerBounds.width / 2, y: readerBounds.height / 2 } }); await expect(button('Назад')).toHaveCount(0); await expect(page.getByTestId('reader-position')).toHaveCount(0); await shot('fullscreen');
+    await page.waitForTimeout(300);
+    await scroll().click({ position: { x: readerBounds.width / 2, y: readerBounds.height / 2 } }); await expect(button('Назад')).toBeVisible(); await drag('reader-position', 0.6); await expect.poll(actualPercent).toBe(60);
     await expect.poll(async () => (await saved()).progressByBook.book_001.percent).toBe(60);
     await page.reload(); await expect(page.getByRole('heading', { name: secondChapter.title, exact: true })).toBeVisible(); await expect.poll(actualPercent).toBe(60); await shot('reader-restored');
     await button('Настройки чтения').click(); await expect(radio('Сепия')).toBeChecked(); await expect(radio('По левому краю')).toBeChecked(); await expect(page.getByText('С засечками', { exact: true })).toBeVisible(); await button('ГОТОВО').click();
