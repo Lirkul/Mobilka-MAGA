@@ -1,4 +1,5 @@
 import { initialLibraryStatuses, initialReadingProgress } from '../data/library.js';
+import { defaultReaderSettings } from '../data/readerOptions.js';
 
 export const storageKey = 'author-today:state:v1';
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -20,7 +21,7 @@ function defaults() {
     progressByBook: Object.fromEntries(Object.entries(initialReadingProgress).map(([bookId, progress]) => [bookId, {
       ...progress, bookId, lastReadAt: bookId === 'book_002' ? '2026-10-21T10:00:00Z' : '2026-10-18T10:00:00Z', updatedAt: '2026-10-21T10:00:00Z',
     }])),
-    settings: { offline: false, latencyMs: 240, emptyResults: false, favoriteGenres: [], signedIn: true, reader: { fontSize: 18, theme: 'light' } },
+    settings: { offline: false, latencyMs: 240, emptyResults: false, favoriteGenres: [], signedIn: true, reader: { ...defaultReaderSettings } },
     subscriptions: {}, authorNotes: {}, reactions: {},
   };
 }

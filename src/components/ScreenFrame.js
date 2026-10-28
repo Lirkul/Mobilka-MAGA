@@ -10,7 +10,7 @@ import UserMenu from './UserMenu';
 import AppHeader from './AppHeader';
 import SearchPanel from './SearchPanel';
 
-export default function ScreenFrame({ title, children, scroll = false, headerActions = null, headerTitle = null, accentBack = false, catalogHeader = false, onSearch = null, lightHeader = false }) {
+export default function ScreenFrame({ title, children, scroll = false, headerActions = null, headerTitle = null, accentBack = false, catalogHeader = false, onSearch = null, lightHeader = false, headerHidden = false }) {
   const [menu, setMenu] = useState(false);
   const [userMenu, setUserMenu] = useState(false);
   const [searchVisible, setSearchVisible] = useState(false);
@@ -18,14 +18,14 @@ export default function ScreenFrame({ title, children, scroll = false, headerAct
   return (
     <View style={styles.outer}>
       <SafeAreaView edges={catalogHeader ? ['bottom', 'left', 'right'] : ['top', 'bottom', 'left', 'right']} style={[styles.screen, lightHeader && styles.lightScreen]}>
-        {catalogHeader ? <AppHeader onBack={goBack} onSearch={onSearch || (() => setSearchVisible(true))} /> : <View style={[styles.bar, lightHeader && styles.lightBar]}>
+        {!headerHidden && (catalogHeader ? <AppHeader onBack={goBack} onSearch={onSearch || (() => setSearchVisible(true))} /> : <View style={[styles.bar, lightHeader && styles.lightBar]}>
           <Pressable accessibilityRole="button" accessibilityLabel="Назад" onPress={goBack} style={styles.back}><Icon name="left" color={accentBack ? colors.accent : colors.secondary} /></Pressable>
           {headerTitle || <Text accessibilityRole="header" style={[styles.title, lightHeader && styles.lightTitle]} numberOfLines={1}>{title}</Text>}
           {headerActions || <>
           <Pressable accessibilityRole="button" accessibilityLabel="Открыть меню" onPress={() => setMenu(true)} style={styles.back}><Icon name="menu" /></Pressable>
           <Pressable accessibilityRole="button" accessibilityLabel="Открыть меню пользователя" onPress={() => setUserMenu(true)} style={styles.back}><Icon name="avatar" size={30} /></Pressable>
           </>}
-        </View>}
+        </View>)}
         {scroll ? <ScrollView contentContainerStyle={styles.content}>{children}</ScrollView> : <View style={styles.body}>{children}</View>}
       </SafeAreaView>
       <NavigationMenu visible={menu} onClose={() => setMenu(false)} />

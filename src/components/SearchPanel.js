@@ -7,6 +7,8 @@ import { colors, fonts, layout } from '../theme';
 import FilterPicker from './FilterPicker';
 import FilterRow from './FilterRow';
 import Icon from './Icon';
+import MotionSurface from './MotionSurface';
+import Expandable from './Expandable';
 
 export default function SearchPanel({ visible, onClose, onSearch, onDiscover, initialFilters = null, initialQuery = '', initialPickerKey = null, embedded = false }) {
   const insets = useSafeAreaInsets();
@@ -58,7 +60,7 @@ export default function SearchPanel({ visible, onClose, onSearch, onDiscover, in
   const content = (
       <KeyboardAvoidingView style={styles.overlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <Pressable accessibilityRole="button" accessibilityLabel="Закрыть поиск" onPress={closePanel} style={StyleSheet.absoluteFill} />
-        <View style={[styles.panel, { paddingBottom: insets.bottom, marginTop: Math.max(insets.top, 16) }]} accessibilityViewIsModal>
+        <MotionSurface testID="search-panel" visible={visible || embedded} style={[styles.panel, { paddingBottom: insets.bottom, marginTop: Math.max(insets.top, 16) }]}>
           <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={styles.content} onContentSizeChange={() => { if (result) scroll.current?.scrollToEnd({ animated: true }); }}>
             <Text accessibilityRole="header" style={styles.heading}>Найдите авторов, книги или посты</Text>
             <View style={styles.searchRow}>
@@ -86,9 +88,9 @@ export default function SearchPanel({ visible, onClose, onSearch, onDiscover, in
             <Pressable accessibilityRole="button" accessibilityLabel="Дополнительные фильтры" aria-expanded={expanded} accessibilityState={{ expanded }} onPress={() => setExpanded(!expanded)} style={styles.additional}>
               <Text style={styles.additionalText}>Дополнительно</Text><Icon name={expanded ? 'down' : 'left'} size={20} color={colors.secondary} />
             </Pressable>
-            {expanded && <View style={styles.additionalFields}>
+            <Expandable testID="additional-filter-fields" expanded={expanded} style={styles.additionalFields}>
               {additionalFields.map((field) => <FilterRow key={field.key} label={field.label} value={getFilterLabel(field, filters[field.key])} onPress={() => setPicker(field)} />)}
-            </View>}
+            </Expandable>
             <Pressable accessibilityRole="button" onPress={submitFilters} style={({ pressed }) => [styles.discoverButton, pressed && styles.pressed]}>
               <Text style={styles.discoverText}>ПОДОБРАТЬ</Text>
             </Pressable>
@@ -97,7 +99,7 @@ export default function SearchPanel({ visible, onClose, onSearch, onDiscover, in
             </View>}
             <Pressable accessibilityRole="button" onPress={reset} style={styles.reset}><Text style={styles.resetText}>СБРОСИТЬ ВСЁ</Text></Pressable>
           </ScrollView>
-        </View>
+        </MotionSurface>
         {picker && <FilterPicker key={picker.key} field={picker} value={filters[picker.key]} onClose={() => setPicker(null)} onApply={(value) => {
           setFilters((previous) => ({ ...previous, [picker.key]: value }));
           setResult(null);

@@ -10,7 +10,7 @@ export default function ReadingReminder({ book }) {
       <View style={styles.icon}><Icon name="book" color="#fff" size={22} /></View>
       <View style={styles.row}>
         <Text style={styles.label}>Вы читали</Text>
-        <Text style={styles.date}>{book.readingProgress.percent}%</Text>
+        <Text style={styles.date}>{book.readingProgress.bookPercent}%</Text>
       </View>
       <Text style={styles.book}>Роман «{book.title}»</Text>
     </Pressable>

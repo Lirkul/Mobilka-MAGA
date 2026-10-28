@@ -49,15 +49,15 @@ async function main() {
     await button('Следующая глава').click();
     await expect(page.getByRole('heading', { name: secondChapter.title })).toBeVisible();
     await page.getByTestId('reader-scroll').evaluate((node) => { node.scrollTop = (node.scrollHeight - node.clientHeight) * 0.6; });
-    await expect(page.getByText('60% главы', { exact: true })).toBeVisible();
+    await expect(page.getByText('26% книги', { exact: true })).toBeVisible();
     // Allow the debounced write to become durable before simulating a hard reload.
     await page.waitForTimeout(750);
     await page.reload();
-    await expect(page.getByText('60% главы', { exact: true })).toBeVisible();
+    await expect(page.getByText('26% книги', { exact: true })).toBeVisible();
     await expect.poll(() => page.getByTestId('reader-scroll').evaluate((node) => Math.round(node.scrollTop / (node.scrollHeight - node.clientHeight) * 100))).toBe(60);
     await menu('Главная');
     await expect(button('Продолжить чтение «Город под чёрным солнцем»')).toBeVisible();
-    await expect(page.getByText('60%', { exact: true })).toBeVisible();
+    await expect(button('Продолжить чтение «Город под чёрным солнцем»').getByText('26%', { exact: true })).toBeVisible();
     await menu('Моя библиотека');
     await expect(page.getByTestId('book-result-book_001')).toBeVisible();
     await screenshot('library');
@@ -95,7 +95,7 @@ async function main() {
     await page.getByTestId('book-result-book_001').click();
     await button('ПРОДОЛЖИТЬ ЧТЕНИЕ').click();
     await expect(page.getByRole('heading', { name: secondChapter.title })).toBeVisible();
-    await expect(page.getByText('60% главы', { exact: true })).toBeVisible();
+    await expect(page.getByText('26% книги', { exact: true })).toBeVisible();
     await menu('Настройки');
     await page.getByRole('switch', { name: 'Имитация отсутствия интернета' }).click();
     await expect(page.getByText('Сеть включена', { exact: true })).toBeVisible();

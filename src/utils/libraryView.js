@@ -25,7 +25,7 @@ export function getLibraryView(library, { shelf = 'reading', query = '', filters
     title: (a, b) => a.title.localeCompare(b.title, 'ru'),
     author: (a, b) => a.authorNames.join(', ').localeCompare(b.authorNames.join(', '), 'ru'),
     updated: (a, b) => time(b.updatedAt) - time(a.updatedAt),
-    progress: (a, b) => (b.readingProgress?.percent || 0) - (a.readingProgress?.percent || 0),
+    progress: (a, b) => (b.readingProgress?.bookPercent || 0) - (a.readingProgress?.bookPercent || 0),
   };
   const compare = comparators[sort] || comparators.recent;
   items.sort((a, b) => compare(a, b) || a.title.localeCompare(b.title, 'ru') || a.id.localeCompare(b.id));

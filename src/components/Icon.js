@@ -81,6 +81,14 @@ export default function Icon({ name, size = 24, color = colors.secondary }) {
     eye: 'M2 12c6-9 14-9 20 0-6 9-14 9-20 0ZM8 12a4 4 0 1 0 8 0 4 4 0 0 0-8 0Z',
     filter: 'M2 3h20l-8 9v8l-4 3V12Z',
     sort: 'M3 5h18M3 12h12M3 19h6',
+    sun: 'M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10ZM12 1v2m0 18v2M1 12h2m18 0h2M4 4l2 2m12 12 2 2M4 20l2-2M18 6l2-2',
+    moon: 'M20 15C10 19 5 10 10 2-2 5 0 22 13 22c4 0 7-3 7-7Z',
+    speaker: 'M3 9h4l6-6v18l-6-6H3ZM17 8c2 2 2 6 0 8m3-12c4 4 4 12 0 16',
+    more: 'M12 3v.1M12 12v.1M12 21v.1',
+    moreHorizontal: 'M3 12h.1M12 12h.1M21 12h.1',
+    gift: 'M3 9h18v13H3ZM2 5h20v4H2ZM12 5v17M12 5C4 6 4-4 9 1Zm0 0c8 1 8-9 3-4Z',
+    alignLeft: 'M4 5h16M4 10h10M4 15h16M4 20h10',
+    alignJustify: 'M4 5h16M4 10h16M4 15h16M4 20h16',
   };
 
   return (

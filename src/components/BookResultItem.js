@@ -31,7 +31,7 @@ function BookResultItem({ book, onStatus = null }) {
           <View style={styles.stat}><Icon name="heart" color={colors.accent} size={14} /><Text style={styles.number}>{count(book.stats.likes)}</Text></View>
         </View>
         {!!book.libraryStatus && <Text style={styles.library}>{libraryStatusLabels[book.libraryStatus]}</Text>}
-        {!!book.readingProgress && <Text style={styles.library}>Прочитано: {book.readingProgress.percent}% главы</Text>}
+        {!!book.readingProgress && <Text style={styles.library}>Прочитано: {book.readingProgress.bookPercent}% книги</Text>}
         <Text style={styles.description} numberOfLines={4}>{book.description}</Text>
       </View>
     </Pressable>

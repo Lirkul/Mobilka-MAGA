@@ -10,6 +10,7 @@ import { currentUser } from '../data/currentUser.js';
 import { filterBooks, normalizeText } from '../utils/filterBooks.js';
 import { getPreferenceScore } from '../utils/preferenceScore.js';
 import { getLibraryView } from '../utils/libraryView.js';
+import { getBookPercent } from '../utils/bookProgress.js';
 import { readAppState, updateAppState, resetAppState } from './appState.js';
 
 const copy = (value) => JSON.parse(JSON.stringify(value));
@@ -64,6 +65,12 @@ const requireAuthor = (id) => {
   if (!author) throw new MockApiError('Автор не найден', 404);
   return author;
 };
+const bookChapters = (bookId) => chapters.filter(chapter => chapter.bookId === bookId);
+const enrichProgress = (bookId, progress) => progress ? {
+  ...progress,
+  // percent remains the persisted position within chapterId for legacy saves.
+  bookPercent: getBookPercent(bookChapters(bookId), progress.chapterId, progress.percent),
+} : null;
 const enrich = (book, state) => ({ ...book,
   textLength: chapters.filter((chapter) => chapter.bookId === book.id).reduce((length, chapter) => length + chapter.text.length, 0),
   seriesTitle: series.find((item) => item.id === book.seriesId)?.title || null,
@@ -72,7 +79,7 @@ const enrich = (book, state) => ({ ...book,
   userLiked: state.bookFeedback[book.id]?.liked === true,
   userReaction: state.bookFeedback[book.id]?.reaction || null,
   isPurchased: state.purchasedBookIds.includes(book.id),
-  readingProgress: state.progressByBook[book.id] ?? null,
+  readingProgress: enrichProgress(book.id, state.progressByBook[book.id]),
 });
 const visibleBooks = (state) => books.filter((book) => state.libraryStatuses[book.id] !== 'not_interested');
 const enrichAuthor = (author, state) => ({ ...author, subscribed: state.subscriptions[author.id] ?? author.subscribed });
@@ -139,7 +146,7 @@ export async function getPostById(id) {
   });
 }
 export async function getChapters(bookId) {
-  return response(() => { requireBook(bookId); return chapters.filter((c) => c.bookId === bookId).map(({ text: _text, ...item }) => item); }, true);
+  return response(() => { requireBook(bookId); return bookChapters(bookId).map(({ text, ...item }) => ({ ...item, textLength: text.length })); }, true);
 }
 export async function getChapter(bookId, chapterId) {
   return response(() => {
@@ -188,12 +195,12 @@ export async function saveReadingProgress(bookId, chapterId, percent) {
       state.progressByBook[bookId] = progress;
       if (!state.libraryStatuses[bookId] || state.libraryStatuses[bookId] === 'planned') state.libraryStatuses[bookId] = 'reading';
     });
-    return progress;
+    return enrichProgress(bookId, progress);
   }, true));
 }
 export async function getReadingProgress(bookId) {
   await waitForReadingProgress(bookId);
-  return response((state) => { requireBook(bookId); return state.progressByBook[bookId] ?? { bookId, chapterId: null, percent: 0, lastReadAt: null, updatedAt: null }; }, true);
+  return response((state) => { requireBook(bookId); return enrichProgress(bookId, state.progressByBook[bookId] ?? { bookId, chapterId: null, percent: 0, lastReadAt: null, updatedAt: null }); }, true);
 }
 export async function getRecentBooks() {
   await waitForAllReadingProgress();

@@ -15,8 +15,15 @@ async function main() {
   const button = (name) => page.getByRole('button', { name, exact: true });
   const heading = (name) => page.getByRole('heading', { name, exact: true });
   const shot = (name) => page.screenshot({ path: `.expo/verification/menus-${name}.png`, animations: 'disabled' });
-  const left = async () => { await expect.poll(async () => await button('Открыть меню').count() + await button('Назад').count()).toBeGreaterThan(0); if (!await button('Открыть меню').count()) await button('Назад').click(); await button('Открыть меню').click(); await expect(page.getByTestId('left-drawer')).toBeVisible(); await expect(page.getByRole('dialog')).toBeVisible(); };
-  const right = async () => { await expect.poll(async () => await button('Открыть меню пользователя').count() + await button('Назад').count()).toBeGreaterThan(0); if (!await button('Открыть меню пользователя').count()) await button('Назад').click(); await button('Открыть меню пользователя').click(); await expect(page.getByTestId('right-drawer')).toBeVisible(); await expect(page.getByRole('dialog')).toBeVisible(); };
+  const settledDrawer = async (side) => {
+    const drawer = page.getByTestId(`${side}-drawer`);
+    await expect(drawer).toBeVisible(); await expect(page.getByRole('dialog')).toBeVisible();
+    const viewport = page.viewportSize().width, frame = Math.min(viewport, 480);
+    // Verify final geometry after the slide, including the centred desktop frame.
+    await expect.poll(async () => { const box = await drawer.boundingBox(); return Math.round(side === 'left' ? box.x : box.x + box.width); }).toBe(Math.round(side === 'left' ? (viewport - frame) / 2 : (viewport + frame) / 2));
+  };
+  const left = async () => { await expect.poll(async () => await button('Открыть меню').count() + await button('Назад').count()).toBeGreaterThan(0); if (!await button('Открыть меню').count()) await button('Назад').click(); await button('Открыть меню').click(); await settledDrawer('left'); };
+  const right = async () => { await expect.poll(async () => await button('Открыть меню пользователя').count() + await button('Назад').count()).toBeGreaterThan(0); if (!await button('Открыть меню пользователя').count()) await button('Назад').click(); await button('Открыть меню пользователя').click(); await settledDrawer('right'); };
   const shelf = async (label) => { await page.getByRole('button', { name: /^Выбрать полку:/ }).click(); await page.getByRole('radio', { name: label, exact: true }).click(); };
   let phase = 'start';
   const step = (name) => { phase = name; console.log(`CHECK: ${name}`); };
@@ -83,16 +90,16 @@ async function main() {
     await expect(heading('Моя библиотека')).toBeVisible();
     const card = page.getByTestId('library-card-book_002');
     await expect(card).toBeVisible();
-    await expect(card.getByText('24%', { exact: true })).toBeVisible();
+    await expect(card.getByText('20%', { exact: true })).toBeVisible();
     await expect(card.getByText('Пепельные врата #1', { exact: true })).toBeVisible();
     await expect(card.getByText('169 ₽', { exact: true })).toBeVisible();
-    await expect(card.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '24');
+    await expect(card.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '20');
     await shot('library');
     await button('Доступ без сети: «Стражи Пепельных врат»').click();
     await expect(heading('Доступ без сети')).toBeVisible(); await button('ПОНЯТНО').click();
     await button('Читать «Стражи Пепельных врат»').click();
     await expect(heading(secondChapter.title)).toBeVisible();
-    await expect(page.getByText('24% главы', { exact: true })).toBeVisible();
+    await expect(page.getByText('20% книги', { exact: true })).toBeVisible();
     await button('Назад').click();
     await expect(card).toBeVisible();
 

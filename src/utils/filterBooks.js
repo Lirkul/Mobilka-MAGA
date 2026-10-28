@@ -10,6 +10,8 @@
  *  - «Не интересно» по умолчанию полностью скрывается из каталога.
  */
 
+import { expandBookGenres } from '../data/genreTree.js';
+
 export const normalizeText = (value = '') =>
   String(value ?? '').toLocaleLowerCase('ru-RU')
     .replace(/ё/g, 'е')
@@ -60,7 +62,7 @@ export function filterBooks(allBooks, filters = {}, options = {}) {
   const requestedTags = normalizeList(tags);
 
   const found = allBooks.filter((book) => {
-    const bookGenres = normalizeList(book.genres);
+    const bookGenres = expandBookGenres(book.genres);
     const bookTags = normalizeList(book.tags);
     const libraryState = libraryStatuses[book.id] ?? null;
 

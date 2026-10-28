@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import Text from './AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from './Icon';
@@ -8,26 +8,27 @@ import NavigationMenu from './NavigationMenu';
 import UserMenu from './UserMenu';
 
 export default function AppHeader({ onSearch, onBack = null }) {
+  const showBack = onBack && Platform.OS === 'web';
   const [menu, setMenu] = useState(false);
   const [userMenu, setUserMenu] = useState(false);
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
       <View style={styles.bar}>
-        {onBack && <Pressable accessibilityRole="button" accessibilityLabel="Назад" onPress={onBack} style={[styles.icon, styles.compact]}><Icon name="left" color={colors.accent} /></Pressable>}
-        <Pressable accessibilityRole="button" accessibilityLabel="Открыть меню" onPress={() => setMenu(true)} style={[styles.icon, onBack && styles.compact]}>
+        {showBack && <Pressable accessibilityRole="button" accessibilityLabel="Назад" onPress={onBack} style={[styles.icon, styles.compact]}><Icon name="left" color={colors.accent} /></Pressable>}
+        <Pressable accessibilityRole="button" accessibilityLabel="Открыть меню" onPress={() => setMenu(true)} style={[styles.icon, showBack && styles.compact]}>
           <Icon name="menu" />
         </Pressable>
         <View style={styles.spacer} />
-        <Pressable accessibilityRole="button" accessibilityLabel="Открыть поиск и подбор книг" onPress={onSearch} style={({ pressed }) => [styles.icon, onBack && styles.compact, pressed && styles.pressed]}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Открыть поиск и подбор книг" onPress={onSearch} style={({ pressed }) => [styles.icon, showBack && styles.compact, pressed && styles.pressed]}>
           <Icon name="search" />
         </Pressable>
-        <View accessibilityLabel="Сообщения" style={[styles.icon, onBack && styles.compact]}><Icon name="mail" /></View>
-        <View accessibilityLabel="Уведомления: 999 и более" style={[styles.icon, onBack && styles.compact]}>
+        <View accessibilityLabel="Сообщения" style={[styles.icon, showBack && styles.compact]}><Icon name="mail" /></View>
+        <View accessibilityLabel="Уведомления: 999 и более" style={[styles.icon, showBack && styles.compact]}>
           <Icon name="bell" />
           <View style={styles.badge}><Text style={styles.badgeText}>999+</Text></View>
         </View>
-        <View accessibilityLabel="Обсуждения" style={[styles.icon, onBack && styles.compact]}><Icon name="chat" /></View>
-        <Pressable accessibilityRole="button" accessibilityLabel="Открыть меню пользователя" onPress={() => setUserMenu(true)} style={[styles.icon, onBack && styles.compact]}><Icon name="avatar" size={32} /></Pressable>
+        <View accessibilityLabel="Обсуждения" style={[styles.icon, showBack && styles.compact]}><Icon name="chat" /></View>
+        <Pressable accessibilityRole="button" accessibilityLabel="Открыть меню пользователя" onPress={() => setUserMenu(true)} style={[styles.icon, showBack && styles.compact]}><Icon name="avatar" size={32} /></Pressable>
       </View>
       <NavigationMenu visible={menu} onClose={() => setMenu(false)} />
       <UserMenu visible={userMenu} onClose={() => setUserMenu(false)} />

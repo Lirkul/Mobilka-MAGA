@@ -31,7 +31,7 @@ async function main() {
     await page.getByTestId('reader-scroll').evaluate((node) => {
       node.scrollTop = Math.round((node.scrollHeight - node.clientHeight) * 0.6);
     });
-    await expect(page.getByText('60% главы', { exact: true })).toBeVisible();
+    await expect(page.getByText('26% книги', { exact: true })).toBeVisible();
 
     // Return immediately: this also catches a stale chapter passed from the book card
     // while the latest asynchronous progress write is still finishing.
@@ -39,7 +39,7 @@ async function main() {
     await expect(page.getByRole('button', { name: 'ПРОДОЛЖИТЬ ЧТЕНИЕ' })).toBeVisible();
     await page.getByRole('button', { name: 'ПРОДОЛЖИТЬ ЧТЕНИЕ' }).click();
     await expect(page.getByRole('heading', { name: chapter(2).title, exact: true })).toBeVisible();
-    await expect(page.getByText('60% главы', { exact: true })).toBeVisible();
+    await expect(page.getByText('26% книги', { exact: true })).toBeVisible();
     await expect.poll(() => page.getByTestId('reader-scroll').evaluate((node) => (
       Math.round(node.scrollTop / (node.scrollHeight - node.clientHeight) * 100)
     ))).toBe(60);

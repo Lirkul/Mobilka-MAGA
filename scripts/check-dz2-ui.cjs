@@ -48,7 +48,7 @@ async function main() {
     await button('Отзывы о произведении').click(); await expect(page.getByRole('tab', { name: 'Отзывы', exact: true })).toHaveAttribute('aria-selected', 'true');
     await page.getByRole('tab', { name: 'Тэги', exact: true }).click(); await expect(page.getByRole('tab', { name: 'Тэги', exact: true })).toHaveAttribute('aria-selected', 'true');
     await page.getByRole('tab', { name: 'О книге', exact: true }).click();
-    await button('Оглавление произведения').click(); await expect(page.getByRole('dialog')).toBeVisible(); await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: /^Оглавление · 6 глав/ }).click(); await expect(page.getByRole('dialog')).toBeVisible(); await page.keyboard.press('Escape');
     await button('ЧИТАТЬ').click(); await expect(page.getByTestId('reader-scroll')).toBeVisible(); await shot('reader');
     await button('Настройки чтения').click(); await shot('reader-settings'); await button('Увеличить шрифт').click(); await page.getByRole('radio', { name: 'Тёмная', exact: true }).click(); await button('ГОТОВО').click();
     await expect(button('Закрыть настройки чтения')).toHaveCount(0);

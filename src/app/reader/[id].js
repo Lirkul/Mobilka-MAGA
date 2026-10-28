@@ -1,17 +1,22 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Modal, PanResponder, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import Text from '../../components/AppText';
 import AsyncState from '../../components/AsyncState';
 import ChapterPickerModal from '../../components/ChapterPickerModal';
 import ScreenFrame from '../../components/ScreenFrame';
 import ReaderSettingsModal from '../../components/ReaderSettingsModal';
+import ReaderLoading from '../../components/ReaderLoading';
 import useAsyncResource from '../../hooks/useAsyncResource';
 import { getBookById, getChapter, getChapters, getReadingProgress, getSettings, updateSettings, saveReadingProgress } from '../../services/mockApi';
 import { colors } from '../../theme';
 import Icon from '../../components/Icon';
 import NavigationMenu from '../../components/NavigationMenu';
 import { StatusBar } from 'expo-status-bar';
+import Slider from '../../components/Slider';
+import { defaultReaderSettings, readerPalette } from '../../data/readerOptions';
+import { getBookPercent } from '../../utils/bookProgress';
+import PagedReader from '../../components/PagedReader';
 
 export default function ReaderScreen() {
   const { id: routeId, chapterId: routeChapter } = useLocalSearchParams();
@@ -22,25 +27,44 @@ export default function ReaderScreen() {
     return { book, chapters, progress, settings };
   }, [id]);
   const { data, loading, error, reload } = useAsyncResource(loader);
+  if (loading) return <ScreenFrame title="Чтение" lightHeader headerHidden><StatusBar style="dark" /><ReaderLoading /></ScreenFrame>;
+  if (!data || loading || error) return <ScreenFrame title="Чтение" lightHeader accentBack><AsyncState loading={loading} error={error} onRetry={reload} /></ScreenFrame>;
+  return <ReaderSession key={data.book.id} data={data} requestedChapterId={chapterId} />;
+}
+
+function ReaderSession({ data, requestedChapterId }) {
   const [chaptersVisible, setChaptersVisible] = useState(false);
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
   const [focused, setFocused] = useState(true);
+  const [controlsVisible, setControlsVisible] = useState(true);
+  const [notice, setNotice] = useState(null);
+  const [preferences, setPreferences] = useState(() => ({ ...defaultReaderSettings, ...data.settings.reader }));
+  const [settingsError, setSettingsError] = useState('');
+  const palette = readerPalette(preferences.theme);
+  async function changePreferences(value) {
+    setSettingsError(''); setPreferences(value);
+    try { await updateSettings({ reader: value }); }
+    catch (failure) { setSettingsError(failure.message); }
+  }
   useFocusEffect(useCallback(() => {
     setFocused(true);
     return () => setFocused(false);
   }, []));
 
   return (
-    <ScreenFrame title={data?.book.title || 'Чтение'} lightHeader accentBack headerActions={<>
-      <Pressable accessibilityRole="button" accessibilityLabel="Открыть оглавление" onPress={() => setChaptersVisible(true)} style={styles.headerAction}><Icon name="openBook" color={colors.accent} size={23} /></Pressable>
+    <ScreenFrame title="Чтение" headerTitle={<View style={{ flex: 1 }} />} lightHeader={!palette.dark} headerHidden={!controlsVisible} accentBack headerActions={<>
+      <Pressable accessibilityRole="button" accessibilityLabel="Информация о произведении" onPress={() => setNotice(`${data.book.title}\n${data.book.authorNames.join(', ')}`)} style={styles.headerAction}><Icon name="graduation" color={colors.accent} size={23} /></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel="Аудиоверсия" onPress={() => setNotice('Для этой книги аудиозапись пока недоступна.')} style={styles.headerAction}><Icon name="speaker" color={colors.accent} size={23} /></Pressable>
       <Pressable accessibilityRole="button" accessibilityLabel="Настройки чтения" onPress={() => setSettingsVisible(true)} style={styles.headerAction}><Icon name="settings" color={colors.accent} size={23} /></Pressable>
-      <Pressable accessibilityRole="button" accessibilityLabel="Открыть меню" onPress={() => setMenuVisible(true)} style={styles.headerAction}><Icon name="menu" color={colors.accent} size={23} /></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel="Переключить ночной режим" onPress={() => changePreferences({ ...preferences, theme: palette.dark ? 'light' : 'dark' })} style={styles.headerAction}><Icon name="moon" color={colors.accent} size={23} /></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel="Открыть меню" onPress={() => setMenuVisible(true)} style={styles.headerAction}><Icon name="more" color={colors.accent} size={23} /></Pressable>
     </>}>
-      <StatusBar style={focused ? 'dark' : 'light'} />
-      <AsyncState loading={loading} error={error} onRetry={reload} />
-      {!!data && !loading && !error && <ReaderContent key={data.book.id} book={data.book} chapters={data.chapters} progress={data.progress} requestedChapterId={chapterId} settings={data.settings.reader} chaptersVisible={chaptersVisible} setChaptersVisible={setChaptersVisible} settingsVisible={settingsVisible} setSettingsVisible={setSettingsVisible} />}
+      <StatusBar style={focused && !palette.dark ? 'dark' : 'light'} />
+      <ReaderContent book={data.book} chapters={data.chapters} progress={data.progress} requestedChapterId={requestedChapterId} preferences={preferences} onPreferences={changePreferences} controlsVisible={controlsVisible} onToggleControls={() => setControlsVisible(!controlsVisible)} chaptersVisible={chaptersVisible} setChaptersVisible={setChaptersVisible} />
+      <ReaderSettingsModal visible={settingsVisible} value={preferences} onChange={changePreferences} error={settingsError} onClose={() => setSettingsVisible(false)} />
       <NavigationMenu visible={menuVisible} onClose={() => setMenuVisible(false)} />
+      <Modal transparent visible={!!notice} animationType="fade" onRequestClose={() => setNotice(null)}><View style={styles.noticeOverlay}><Pressable accessibilityRole="button" accessibilityLabel="Закрыть информацию" onPress={() => setNotice(null)} style={StyleSheet.absoluteFill} /><View style={styles.notice}><Text style={styles.noticeText}>{notice}</Text><Pressable accessibilityRole="button" onPress={() => setNotice(null)} style={styles.headerAction}><Text style={styles.navigationLabel}>ЗАКРЫТЬ</Text></Pressable></View></View></Modal>
     </ScreenFrame>
   );
 }
@@ -94,22 +118,15 @@ function useProgressWriter(bookId) {
   return { record, flush, saveError };
 }
 
-function ReaderContent({ book, chapters, progress, requestedChapterId, settings, chaptersVisible, setChaptersVisible, settingsVisible, setSettingsVisible }) {
+function ReaderContent({ book, chapters, progress, requestedChapterId, preferences, onPreferences, controlsVisible, onToggleControls, chaptersVisible, setChaptersVisible }) {
   const [chapterId, setChapterId] = useState(() => {
     if (chapters.some((chapter) => chapter.id === requestedChapterId)) return requestedChapterId;
     if (chapters.some((chapter) => chapter.id === progress.chapterId)) return progress.chapterId;
     return chapters[0]?.id || null;
   });
   const [initialPercent, setInitialPercent] = useState(chapterId === progress.chapterId ? progress.percent : 0);
-  const [preferences, setPreferences] = useState(settings);
-  const [settingsError, setSettingsError] = useState('');
   const { record, flush, saveError } = useProgressWriter(book.id);
   const chapterIndex = chapters.findIndex((chapter) => chapter.id === chapterId);
-  async function changePreferences(value) {
-    setSettingsError('');
-    try { await updateSettings({ reader: value }); setPreferences(value); }
-    catch (failure) { setSettingsError(failure.message); }
-  }
 
   function chooseChapter(nextId) {
     setChaptersVisible(false);
@@ -122,37 +139,66 @@ function ReaderContent({ book, chapters, progress, requestedChapterId, settings,
   }
 
   return (
-    <View style={[styles.reader, preferences.theme === 'dark' && { backgroundColor: colors.background }]}>
+    <View style={[styles.reader, { backgroundColor: readerPalette(preferences.theme).paper }]}>
       {!!saveError && <View style={styles.saveError}>
         <Text accessibilityRole="alert" style={styles.saveErrorText}>{saveError}</Text>
         <Pressable onPress={() => { void flush().catch(() => {}); }} accessibilityRole="button" style={styles.retrySave}><Text style={styles.retrySaveText}>ПОВТОРИТЬ</Text></Pressable>
       </View>}
-      {chapterId ? <ReaderChapter key={chapterId} book={book} chapterId={chapterId} initialPercent={initialPercent} onProgress={record} preferences={preferences} chapterNumber={chapterIndex + 1} chapterCount={chapters.length} /> : <Text style={styles.empty}>Главы пока не опубликованы.</Text>}
-      <View style={styles.navigation}>
+      {chapterId ? <ReaderChapter key={chapterId} book={book} chapters={chapters} chapterId={chapterId} initialPercent={initialPercent} onProgress={record} preferences={preferences} onPreferences={onPreferences} controlsVisible={controlsVisible} onToggleControls={onToggleControls} onContents={() => setChaptersVisible(true)} chapterNumber={chapterIndex + 1} /> : <Text style={styles.empty}>Главы пока не опубликованы.</Text>}
+      {controlsVisible && <View style={[styles.navigation, readerPalette(preferences.theme).dark && styles.darkFooter]}>
         <Pressable disabled={chapterIndex <= 0} onPress={() => chooseChapter(chapters[chapterIndex - 1].id)} accessibilityRole="button" accessibilityLabel="Предыдущая глава" style={[styles.navigationButton, chapterIndex <= 0 && styles.disabled]}>
-          <Text style={styles.navigationLabel}>‹ Предыдущая</Text>
+          <Icon name="left" color={colors.accent} size={16} />
         </Pressable>
         <Pressable disabled={chapterIndex < 0 || chapterIndex >= chapters.length - 1} onPress={() => chooseChapter(chapters[chapterIndex + 1].id)} accessibilityRole="button" accessibilityLabel="Следующая глава" style={[styles.navigationButton, (chapterIndex < 0 || chapterIndex >= chapters.length - 1) && styles.disabled]}>
-          <Text style={styles.navigationLabel}>Следующая ›</Text>
+          <Icon name="right" color={colors.accent} size={16} />
         </Pressable>
-      </View>
+      </View>}
       <ChapterPickerModal visible={chaptersVisible} chapters={chapters} selectedId={chapterId} onSelect={chooseChapter} onClose={() => setChaptersVisible(false)} />
-      <ReaderSettingsModal visible={settingsVisible} value={preferences} onChange={changePreferences} error={settingsError} onClose={() => setSettingsVisible(false)} />
     </View>
   );
 }
 
-function ReaderChapter({ book, chapterId, initialPercent, onProgress, preferences, chapterNumber, chapterCount }) {
+function ReaderChapter({ book, chapters, chapterId, initialPercent, onProgress, preferences, onPreferences, controlsVisible, onToggleControls, onContents, chapterNumber }) {
   const loader = useCallback(() => getChapter(book.id, chapterId), [book.id, chapterId]);
   const { data: chapter, loading, error, reload } = useAsyncResource(loader);
   const scroll = useRef(null);
+  const paged = useRef(null);
   const viewportHeight = useRef(0);
   const contentHeight = useRef(0);
   const positionPercent = useRef(initialPercent);
   const restored = useRef(false);
   const progressInitialized = useRef(false);
   const [percent, setPercent] = useState(initialPercent);
-  const textColor = { color: preferences.theme === 'dark' ? colors.secondary : '#484844' };
+  const bookPercent = getBookPercent(chapters, chapterId, percent);
+  const [pageCount, setPageCount] = useState(1);
+  const [pageNumber, setPageNumber] = useState(1);
+  const [brightnessPreview, setBrightnessPreview] = useState(null);
+  const palette = readerPalette(preferences.theme);
+  const textColor = { color: palette.ink };
+  const fontFamily = preferences.font === 'serif' ? (Platform.OS === 'android' ? 'serif' : 'Georgia')
+    : preferences.font === 'mono' ? (Platform.OS === 'ios' ? 'Menlo' : 'monospace')
+      : preferences.font === 'system' ? (Platform.OS === 'android' ? 'sans-serif' : Platform.OS === 'ios' ? 'System' : 'system-ui') : undefined;
+  const gestureValues = useRef({ preferences, onPreferences });
+  const gestureStart = useRef(85);
+  const gestureBrightness = useRef(85);
+  useLayoutEffect(() => { gestureValues.current = { preferences, onPreferences }; }, [preferences, onPreferences]);
+  useLayoutEffect(() => {
+    restored.current = false; viewportHeight.current = 0; contentHeight.current = 0;
+  }, [preferences.readingMode]);
+  const onPagedPosition = useCallback(value => {
+    positionPercent.current = value; setPercent(value); onProgress(chapterId, value);
+  }, [chapterId, onProgress]);
+  const onPagination = useCallback((number, count) => { setPageNumber(number); setPageCount(count); }, []);
+  const onViewportHeight = useCallback(height => { viewportHeight.current = height; }, []);
+  // PanResponder registers callbacks, without reading refs during render.
+  // eslint-disable-next-line react-hooks/refs
+  const [brightnessGesture] = useState(() => PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onPanResponderGrant: () => { gestureStart.current = gestureValues.current.preferences.brightness; gestureBrightness.current = gestureStart.current; },
+    onPanResponderMove: (_event, gesture) => { gestureBrightness.current = Math.max(0, Math.min(100, Math.round(gestureStart.current - gesture.dy / Math.max(1, viewportHeight.current) * 150))); setBrightnessPreview(gestureBrightness.current); },
+    onPanResponderRelease: () => { const value = gestureValues.current; value.onPreferences({ ...value.preferences, brightness: gestureBrightness.current, autoBrightness: false }); setBrightnessPreview(null); },
+    onPanResponderTerminate: () => setBrightnessPreview(null),
+  }));
 
   useEffect(() => {
     if (chapter && !chapter.requiresPayment && !progressInitialized.current) {
@@ -165,7 +211,7 @@ function ReaderChapter({ book, chapterId, initialPercent, onProgress, preference
     if (restored.current || !viewportHeight.current || !contentHeight.current) return;
     restored.current = true;
     const maxOffset = Math.max(0, contentHeight.current - viewportHeight.current);
-    scroll.current?.scrollTo({ y: maxOffset * initialPercent / 100, animated: false });
+    scroll.current?.scrollTo({ y: maxOffset * positionPercent.current / 100, animated: false });
   }
 
   function trackPosition(event) {
@@ -175,44 +221,72 @@ function ReaderChapter({ book, chapterId, initialPercent, onProgress, preference
     if (maxOffset <= 0) return;
     const current = Math.max(0, Math.min(100, Math.round(contentOffset.y / maxOffset * 100)));
     setPercent(current);
+    setPageNumber(current === 100 ? pageCount : Math.min(pageCount, Math.floor(contentOffset.y / layoutMeasurement.height) + 1));
     positionPercent.current = current;
     onProgress(chapterId, current);
   }
 
+  function seek(value) {
+    const current = Math.max(0, Math.min(100, Math.round(value)));
+    if (preferences.readingMode === 'paged') { paged.current?.seek(current); return; }
+    positionPercent.current = current; setPercent(current); onProgress(chapterId, current);
+    scroll.current?.scrollTo({ y: Math.max(0, contentHeight.current - viewportHeight.current) * current / 100, animated: false });
+  }
+
+  function renderText(fragments, heading = true) {
+    return <>
+      {heading && !controlsVisible && <View style={styles.fullscreenByline}><Text style={[styles.bookTitle, textColor]}>{book.title}</Text><Text style={[styles.byline, textColor]}>{book.authorNames.join(', ')}</Text></View>}
+      {heading && <Text accessibilityRole="header" style={[styles.chapterTitle, textColor]}>{chapter.title}</Text>}
+      {fragments.map((fragment, index) => <Text key={index} testID="reader-page-paragraph" selectable={preferences.readingMode !== 'paged'} style={[styles.paragraph, textColor, { fontSize: preferences.fontSize, lineHeight: Math.round(preferences.fontSize * preferences.lineHeight), fontFamily, textAlign: preferences.alignment, marginBottom: fragment.endsParagraph ? preferences.paragraphSpacing : 0 }]}>{fragment.startsParagraph ? '    ' : ''}{fragment.text}</Text>)}
+    </>;
+  }
+
   return (
     <View style={styles.chapterBody}>
-      <AsyncState loading={loading} error={error} onRetry={reload} />
+      {loading ? <ReaderLoading theme={preferences.theme} /> : <AsyncState loading={false} error={error} onRetry={reload} />}
       {!!chapter && !loading && !error && (chapter.requiresPayment ? (
         <View style={styles.paywall}>
-          <Text accessibilityRole="header" style={styles.paywallTitle}>{chapter.title}</Text>
+          <Text accessibilityRole="header" style={[styles.paywallTitle, textColor]}>{chapter.title}</Text>
           <Text style={styles.paywallLabel}>Платная глава</Text>
-          <Text style={styles.paywallText}>Бесплатный фрагмент закончился. {book.access === 'series_subscription' ? 'Продолжение доступно по подписке на серию.' : 'Продолжение доступно после покупки книги.'}</Text>
+          <Text style={[styles.paywallText, textColor]}>Бесплатный фрагмент закончился. {book.access === 'series_subscription' ? 'Продолжение доступно по подписке на серию.' : 'Продолжение доступно после покупки книги.'}</Text>
           <Text style={styles.paywallHint}>В учебной версии покупка недоступна. Можно вернуться к бесплатным главам через оглавление.</Text>
         </View>
       ) : (
         <>
-          <ScrollView
+          <View testID="reader-paper" style={[styles.paper, { backgroundColor: palette.paper }]}>
+          {preferences.readingMode === 'paged' ? <PagedReader text={chapter.text} layoutKey={JSON.stringify([chapterId, preferences.fontSize, preferences.font, preferences.alignment, preferences.lineHeight, preferences.paragraphSpacing, preferences.horizontalPadding, controlsVisible])} padding={preferences.horizontalPadding} controlsVisible={controlsVisible} viewportRef={paged} initialPercent={percent} onPosition={onPagedPosition} onPagination={onPagination} onViewportHeight={onViewportHeight} onToggleControls={onToggleControls} renderContent={renderText} theme={preferences.theme} /> : <ScrollView
             ref={scroll}
             testID="reader-scroll"
             style={styles.pages}
-            contentContainerStyle={styles.pageContent}
-            onLayout={(event) => { viewportHeight.current = event.nativeEvent.layout.height; restorePosition(); }}
+            contentContainerStyle={[styles.pageContent, { paddingHorizontal: preferences.horizontalPadding }]}
+            onLayout={(event) => {
+              const previousHeight = viewportHeight.current;
+              viewportHeight.current = event.nativeEvent.layout.height;
+              if (contentHeight.current) setPageCount(Math.max(1, Math.ceil(contentHeight.current / viewportHeight.current)));
+              if (restored.current && previousHeight !== viewportHeight.current) scroll.current?.scrollTo({ y: Math.max(0, contentHeight.current - viewportHeight.current) * positionPercent.current / 100, animated: false });
+              else restorePosition();
+            }}
             onContentSizeChange={(_width, height) => {
               const previousHeight = contentHeight.current;
               contentHeight.current = height;
+              if (viewportHeight.current) setPageCount(Math.max(1, Math.ceil(height / viewportHeight.current)));
               if (restored.current && previousHeight !== height) scroll.current?.scrollTo({ y: Math.max(0, height - viewportHeight.current) * positionPercent.current / 100, animated: false });
               else restorePosition();
             }}
             onScroll={trackPosition}
             scrollEventThrottle={100}
           >
-            <Text accessibilityRole="header" style={[styles.chapterTitle, textColor]}>{chapter.title}</Text>
-            {chapter.text.split('\n\n').map((paragraph, index) => <Text key={index} selectable style={[styles.paragraph, textColor, { fontSize: preferences.fontSize, lineHeight: preferences.fontSize + 8 }]}>{'    '}{paragraph}</Text>)}
-          </ScrollView>
-          <View style={styles.progressFooter}>
-            <View style={styles.progressLine}><Icon name="documents" size={19} color={colors.accent} /><View accessibilityRole="progressbar" accessibilityLabel="Прогресс главы" accessibilityValue={{ min: 0, max: 100, now: percent }} style={styles.progressTrack}><View style={[styles.progressFill, { width: `${percent}%` }]} /></View><Text style={styles.pageNumber}>{chapterNumber} / {chapterCount}</Text></View>
-            <Text accessibilityLabel={`Прочитано ${percent} процентов главы`} style={styles.progress}>{percent}% главы</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel={controlsVisible ? 'Скрыть панели читалки' : 'Показать панели читалки'} onPress={onToggleControls}>
+            {renderText(chapter.text.split('\n\n').map(text => ({ text, startsParagraph: true, endsParagraph: true })))}
+            </Pressable>
+          </ScrollView>}
+          {preferences.brightnessGestures && <View testID="reader-brightness-gesture" style={styles.brightnessGesture} {...brightnessGesture.panHandlers} />}
+          <View pointerEvents="none" testID="reader-dimmer" style={[StyleSheet.absoluteFill, { backgroundColor: '#000', opacity: brightnessPreview === null && preferences.autoBrightness ? 0 : (100 - (brightnessPreview ?? preferences.brightness)) / 100 * 0.65 }]} />
           </View>
+          {controlsVisible && <View style={[styles.progressFooter, palette.dark && styles.darkFooter]}>
+            <View style={styles.progressLine}><Pressable accessibilityRole="button" accessibilityLabel="Открыть оглавление" onPress={onContents} style={styles.contentsIcon}><Icon name="documents" size={22} color={colors.accent} /></Pressable><Slider value={percent} onChange={seek} label="Позиция в главе" testID="reader-position" disabled={pageCount <= 1} /><Text style={styles.pageNumber}>{pageNumber} из {pageCount}</Text></View>
+            <View style={styles.progressCaption}><Text style={styles.pageNumber}>Глава {chapterNumber}</Text><Text accessibilityLabel={`Прочитано ${bookPercent} процентов книги`} style={styles.progress}>{bookPercent}% книги</Text></View>
+          </View>}
         </>
       ))}
     </View>
@@ -227,6 +301,7 @@ const styles = StyleSheet.create({
   tocLabel: { color: '#3b718f', fontSize: 14 },
   chapterCount: { color: '#65655f', fontSize: 12 },
   chapterBody: { flex: 1 },
+  paper: { flex: 1 }, brightnessGesture: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 22 }, fullscreenByline: { paddingTop: 16, paddingBottom: 2 },
   pages: { flex: 1 },
   pageContent: { paddingHorizontal: 10, paddingTop: 0, paddingBottom: 20 },
   bookTitle: { textAlign: 'center', color: '#484844', fontSize: 18, lineHeight: 25 },
@@ -235,9 +310,10 @@ const styles = StyleSheet.create({
   paragraph: { color: '#484844', fontSize: 18, lineHeight: 26, textAlign: 'justify', marginBottom: 12 },
   progressFooter: { backgroundColor: '#ffffff', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#d8d8d4', paddingHorizontal: 14, paddingTop: 10 },
   progressLine: { flexDirection: 'row', gap: 12, alignItems: 'center' }, progressTrack: { height: 3, flex: 1, backgroundColor: '#cccac7', borderRadius: 2 }, progressFill: { height: 3, backgroundColor: colors.accent, borderRadius: 2 }, pageNumber: { color: '#969a9d', fontSize: 11 },
+  darkFooter: { backgroundColor: '#252525' }, contentsIcon: { width: 30, minHeight: 40, alignItems: 'center', justifyContent: 'center' }, progressCaption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingLeft: 48, paddingRight: 44 },
   progress: { color: '#74746e', fontSize: 11, textAlign: 'center', paddingVertical: 5 },
   navigation: { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#e1e1df', backgroundColor: '#ffffff' },
-  navigationButton: { flex: 1, minHeight: 40, alignItems: 'center', justifyContent: 'center' },
+  navigationButton: { flex: 1, minHeight: 24, alignItems: 'center', justifyContent: 'center' },
   navigationLabel: { color: '#3b718f', fontSize: 13 },
   disabled: { opacity: 0.35 },
   empty: { color: '#484844', fontSize: 16, padding: 24, flex: 1 },
@@ -250,4 +326,5 @@ const styles = StyleSheet.create({
   paywallLabel: { color: colors.accent, textAlign: 'center', fontSize: 18, fontWeight: '500' },
   paywallText: { color: '#484844', textAlign: 'center', fontSize: 16, lineHeight: 24 },
   paywallHint: { color: '#74746e', textAlign: 'center', fontSize: 13, lineHeight: 20 },
+  noticeOverlay: { flex: 1, backgroundColor: '#00000066', alignItems: 'center', justifyContent: 'center', padding: 24 }, notice: { backgroundColor: '#fff', borderRadius: 12, padding: 20, width: '100%', maxWidth: 380, gap: 16 }, noticeText: { color: '#484844', fontSize: 16, lineHeight: 24 },
 });

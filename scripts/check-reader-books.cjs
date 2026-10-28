@@ -19,7 +19,7 @@ async function main() {
   const heading = (name) => page.getByRole('heading', { name, exact: true });
   const visit = (path) => page.goto(new URL(path, base).href);
   const scroll = () => page.getByTestId('reader-scroll');
-  async function scrollTo(percent) {
+  async function scrollTo(percent, bookPercent) {
     // Text can mount before React Native reports the new chapter's layout.
     await scroll().evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     await scroll().evaluate((node, value) => {
@@ -27,7 +27,8 @@ async function main() {
       if (distance <= 0) throw new Error('Expected a scrollable chapter.');
       node.scrollTop = distance * value / 100;
     }, percent);
-    await expect(page.getByText(`${percent}% главы`, { exact: true })).toBeVisible();
+    await expect(page.getByText(`${bookPercent}% книги`, { exact: true })).toBeVisible();
+    await expect.poll(() => scroll().evaluate(node => Math.round(node.scrollTop / (node.scrollHeight - node.clientHeight) * 100))).toBe(percent);
   }
   async function readFirst(bookId) {
     await page.getByRole('button', { name: /^Оглавление · 6 глав/ }).click();
@@ -60,7 +61,7 @@ async function main() {
     await visit('/book/book_001'); await readFirst('book_001');
     await button('Следующая глава').click();
     await expect(scroll()).toContainText(opening('book_001', 2));
-    await scrollTo(60);
+    await scrollTo(60, 26);
     await button('Назад').click();
     await button('Автор: Арсений Норд').click();
     await page.getByRole('tab', { name: 'Произведения', exact: true }).click();
@@ -68,11 +69,11 @@ async function main() {
     await expect(heading('Стражи Пепельных врат')).toBeVisible(); await readFirst('book_002');
     await expect(scroll()).not.toContainText(opening('book_001', 2));
     await button('Следующая глава').click(); await expect(scroll()).toContainText(opening('book_002', 2));
-    await scrollTo(30);
+    await scrollTo(30, 21);
     await button('Назад').click();
     await expect(button('ПРОДОЛЖИТЬ ЧТЕНИЕ')).toBeVisible(); await button('ПРОДОЛЖИТЬ ЧТЕНИЕ').click();
     await expect(scroll()).toContainText(opening('book_002', 2));
-    await expect(page.getByText('30% главы', { exact: true })).toBeVisible();
+    await expect(page.getByText('21% книги', { exact: true })).toBeVisible();
     await expect.poll(() => scroll().evaluate((node) => Math.round(node.scrollTop / (node.scrollHeight - node.clientHeight) * 100))).toBe(30);
     const progress = await page.evaluate(() => JSON.parse(localStorage.getItem('author-today:state:v1')).progressByBook);
     expect(progress.book_001.chapterId).toBe('book_001_ch_02'); expect(progress.book_001.percent).toBe(60);

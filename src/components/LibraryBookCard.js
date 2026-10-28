@@ -10,7 +10,7 @@ function LibraryBookCard({ book, onStatus, onAvailability }) {
   const { width } = useWindowDimensions();
   const coverWidth = Math.round(Math.min(width, layout.maxWidth) * 0.205);
   const item = toBookCard(book);
-  const percent = book.readingProgress?.percent || 0;
+  const percent = book.readingProgress?.bookPercent || 0;
   const openBook = () => router.push({ pathname: '/book/[id]', params: { id: book.id } });
   const sizeLabel = `${(book.textLength / 1000).toFixed(1).replace('.', ',')}К зн.`;
   return <View testID={`library-card-${book.id}`} style={styles.card}>
@@ -18,8 +18,8 @@ function LibraryBookCard({ book, onStatus, onAvailability }) {
       <Pressable testID={`book-result-${book.id}`} accessibilityRole="button" accessibilityLabel={`Открыть книгу «${book.title}»`} onPress={openBook} style={styles.main}>
         <View style={{ width: coverWidth }}>
           <Image source={item.cover} accessibilityLabel={`Обложка книги «${book.title}»`} style={[styles.cover, { width: coverWidth, height: coverWidth * 1.5 }]} />
-          <Text accessibilityLabel={`Прогресс текущей главы: ${percent}%`} style={styles.percent}>{percent}%</Text>
-          <View accessibilityRole="progressbar" accessibilityLabel="Прогресс текущей главы" accessibilityValue={{ min: 0, max: 100, now: percent }} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} style={styles.track}><View style={[styles.progress, { width: `${percent}%` }]} /></View>
+          <Text accessibilityLabel={`Прочитано книги: ${percent}%`} style={styles.percent}>{percent}%</Text>
+          <View accessibilityRole="progressbar" accessibilityLabel="Прогресс книги" accessibilityValue={{ min: 0, max: 100, now: percent }} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} style={styles.track}><View style={[styles.progress, { width: `${percent}%` }]} /></View>
         </View>
         <View style={styles.info}>
           <Text style={styles.title} numberOfLines={3}>{book.title}</Text>

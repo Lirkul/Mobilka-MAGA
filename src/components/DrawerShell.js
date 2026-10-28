@@ -1,6 +1,7 @@
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { layout } from '../theme';
+import MotionSurface from './MotionSurface';
 
 export default function DrawerShell({ visible, onClose, side = 'left', children, onShow = () => {}, overlayContent = null }) {
   return <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose} onShow={onShow}>
@@ -8,7 +9,7 @@ export default function DrawerShell({ visible, onClose, side = 'left', children,
       {overlayContent ? <View style={styles.fullOverlay}>{overlayContent}</View> : <>
       <Pressable accessibilityRole="button" accessibilityLabel={side === 'left' ? 'Закрыть меню' : 'Закрыть меню пользователя'} onPress={onClose} style={StyleSheet.absoluteFill} />
       <View pointerEvents="box-none" style={styles.frame}>
-        <SafeAreaView testID={`${side}-drawer`} style={[styles.drawer, side === 'right' && styles.right]}>{children}</SafeAreaView>
+        <MotionSurface visible={visible} motion={side} style={[styles.drawer, side === 'right' && styles.right]}><SafeAreaView testID={`${side}-drawer`} style={{ flex: 1 }}>{children}</SafeAreaView></MotionSurface>
       </View>
       </>}
     </View>

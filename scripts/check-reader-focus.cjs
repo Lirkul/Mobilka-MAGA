@@ -52,7 +52,7 @@ async function main() {
       node.scrollTop = distance * 0.6;
     });
     await expect.poll(actualPercent).toBe(60);
-    await expect(page.getByText('60% главы', { exact: true })).toBeVisible();
+    await expect(page.getByText('26% книги', { exact: true })).toBeVisible();
     await button('Открыть меню').click();
     await page.getByTestId('left-drawer').getByRole('button', { name: 'Общие настройки', exact: true }).click();
     await expect(button('Задержка ответа')).toBeVisible();
