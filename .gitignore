@@ -42,3 +42,6 @@ yarn-error.*
 
 # Local video reference (excluded from publication)
 /reference/video/ДЗ1.mp4
+
+# Local documentation (excluded from publication)
+/docs/
