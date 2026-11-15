@@ -17,6 +17,10 @@ if (-not (Test-Path -LiteralPath $adb) -or -not (Test-Path -LiteralPath $emulato
 if (-not (Test-Path -LiteralPath 'node_modules\expo\bin\cli')) {
     throw 'Dependencies are missing. Run npm.cmd ci first.'
 }
+& node.exe -e "try { require.resolve('@expo/cli', { paths: [require.resolve('expo/package.json')] }); } catch { process.exitCode = 1; }"
+if ($LASTEXITCODE -ne 0) {
+    throw 'Dependencies are incomplete. Run npm.cmd ci to restore Expo CLI.'
+}
 
 $env:ANDROID_HOME = $sdkDir
 $env:ANDROID_SDK_ROOT = $sdkDir
@@ -24,8 +28,11 @@ $env:PATH = "$sdkDir\platform-tools;$sdkDir\emulator;$env:PATH"
 & $adb start-server
 if ($LASTEXITCODE -ne 0) { throw 'Could not start ADB.' }
 
-$deviceLine = & $adb devices | Where-Object { $_ -match '^emulator-\d+\s+' } | Select-Object -First 1
-if (-not $deviceLine) {
+$deviceLine = & $adb devices | Where-Object { $_ -match '^emulator-\d+\s+device\s*$' } | Select-Object -First 1
+$emulatorProcess = Get-Process -Name 'emulator', 'qemu-system-*' -ErrorAction SilentlyContinue | Select-Object -First 1
+# ADB may retain a dead transport after the emulator closes. A booting local
+# emulator still has a process even before it appears as a ready ADB device.
+if (-not $deviceLine -and -not $emulatorProcess) {
     $avds = @(& $emulator -list-avds | Where-Object { $_.Trim() })
     if (-not $avds.Count) { throw 'No Android virtual device found. Create one with Android Device Manager.' }
     if ($Avd -notin $avds) { $Avd = $avds[0] }
@@ -40,8 +47,12 @@ while ((Get-Date) -lt $deadline) {
     $readyLine = & $adb devices | Where-Object { $_ -match '^emulator-\d+\s+device\s*$' } | Select-Object -First 1
     if ($readyLine) {
         $serial = ($readyLine -split '\s+')[0]
-        $bootComplete = & $adb -s $serial shell getprop sys.boot_completed
-        if ($LASTEXITCODE -eq 0 -and "$bootComplete".Trim() -eq '1') { break }
+        try {
+            $bootComplete = & $adb -s $serial shell getprop sys.boot_completed 2>&1
+            if ($LASTEXITCODE -eq 0 -and "$bootComplete".Trim() -eq '1') { break }
+        } catch {
+            $bootComplete = ''
+        }
     }
     Start-Sleep -Seconds 2
 }
